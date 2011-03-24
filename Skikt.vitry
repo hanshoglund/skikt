@@ -9,6 +9,38 @@
 module Hans.Music.Skikt
 
 
+; 3 skikt
+; codata? strömmar av händelser?
+; 
+
+
+
+
+header = "title Skikt"
+
+instruments =  "part <id fl,  abbr Fl,  inst flute>\n"
+            ++ "part <id ob,  abbr Ob, inst oboe>\n"
+            ++ "part <id cl,  abbr Kl, inst bflat-clarinet>\n"
+            ++ "part <id bsn, abbr Fag, inst bassoon>\n"
+
+            ++ "part <id hrn, abbr Hrn, inst horn>\n"
+            ++ "part <id tp,  abbr Tpt, inst bflat-trumpet>\n"
+            ++ "part <id tbn, abbr Tbn, inst tenor-trombone>\n"
+
+            ++ "part <id pno, abbr Pno, inst piano>\n"
+
+            ++ "part <id vl1, abbr \"Vl I\", inst violin>\n"
+            ++ "part <id vl2, abbr \"Vl II\", inst violin>\n"
+            ++ "part <id vla, abbr Vla, inst viola>\n"
+            ++ "part <id vc,  abbr Vc, name Violoncello, inst cello>\n"
+            ++ "part <id db,  abbr Kb, inst bass>\n"
+
+
+events =  "\n"
+       ++ "time 0 dur 1 pitch 60 part fl;\n"
+       ++ "time + dur 1 pitch 67 part ob;"
+
+output = header ++ "\n\n" ++ instruments ++ "\n\n" ++ events 
 
 
 
@@ -16,25 +48,31 @@ module Hans.Music.Skikt
 
 
 
-    
-    
-    
+
+
+
+
+
+
+
 
 
 ; ============================================================
 ; Fomus
 
-SCORE_WRITER_LOCATION = "/Applications/Sibelius 6.app/Contents/MacOS/Sibelius 6"
-FILE_LOCATION         = "/Users/hans/Documents/Musik/fomus/"
-FILE_NAME             = "test"
+SCORE_EDITOR  = "/Applications/Sibelius 6.app"
+; SCORE_EDITOR  = "/Applications/MuseScore.app"
+; SCORE_EDITOR  = "/Applications/Finale 2009/Finale 2009.app"
 
-    
-test _ = do
-    run [ "fomus"
-        , (FILE_LOCATION ++ FILE_NAME) ++ ".fms"
-        , "-o"
-        , (FILE_LOCATION ++ FILE_NAME) ++ ".xml" ] 
-    run [ "open"
-        , "-a"
-        , SCORE_WRITER_LOCATION
-        , (FILE_LOCATION ++ FILE_NAME) ++ ".xml" ]
+FILE_LOCATION = "/Users/hans/Documents/Musik/Skikt/output/"
+FILE_NAME     = "out"
+
+fmsFile = FILE_LOCATION ++ FILE_NAME ++ ".fms"
+xmlFile = FILE_LOCATION ++ FILE_NAME ++ ".xml"
+
+; Writes the contents of output to a score and displays it
+; () -> ()
+export _ = do
+    writeFile fmsFile output
+    run [ "fomus", fmsFile, "-o", xmlFile ] 
+    run [ "open", "-a", SCORE_EDITOR, xmlFile ]
