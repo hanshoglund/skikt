@@ -1,0 +1,40 @@
+; load "~/Documents/Musik/Skikt/Skikt.vitry"
+
+; =============================================================================
+; Skikt
+; Hans Hoglund (2011)
+; Vitry v0.1.x
+; =============================================================================
+
+module Hans.Music.Skikt
+
+
+
+
+
+
+
+
+
+    
+    
+    
+
+
+; ============================================================
+; Fomus
+
+SCORE_WRITER_LOCATION = "/Applications/Sibelius 6.app/Contents/MacOS/Sibelius 6"
+FILE_LOCATION         = "/Users/hans/Documents/Musik/fomus/"
+FILE_NAME             = "test"
+
+    
+test _ = do
+    run [ "fomus"
+        , (FILE_LOCATION ++ FILE_NAME) ++ ".fms"
+        , "-o"
+        , (FILE_LOCATION ++ FILE_NAME) ++ ".xml" ] 
+    run [ "open"
+        , "-a"
+        , SCORE_WRITER_LOCATION
+        , (FILE_LOCATION ++ FILE_NAME) ++ ".xml" ]
