@@ -8,37 +8,57 @@
 
 module Hans.Music.Skikt
 
+SCORE_EDITOR  = "/Applications/Sibelius 6.app"
+FILE_LOCATION = "/Users/hans/Documents/Musik/Skikt/output/"
+FILE_NAME     = "out"
 
-; 3 skikt
-; codata? strömmar av händelser?
-; 
+; =============================================================================
+
+
+
+
+
 
 
 
 
 header = "title Skikt"
 
-instruments =  "part <id fl,  abbr Fl,  inst flute>\n"
-            ++ "part <id ob,  abbr Ob, inst oboe>\n"
-            ++ "part <id cl,  abbr Kl, inst bflat-clarinet>\n"
-            ++ "part <id bsn, abbr Fag, inst bassoon>\n"
+instruments = join "\n" 
+            [ "part <id fl,  abbr Fl,         inst flute>"
+            , "part <id ob,   abbr Ob,        inst oboe>"
+            , "part <id cl,   abbr Kl,        inst bflat-clarinet>"
+            , "part <id bsn,  abbr Fag,       inst bassoon>"
 
-            ++ "part <id hrn, abbr Hrn, inst horn>\n"
-            ++ "part <id tp,  abbr Tpt, inst bflat-trumpet>\n"
-            ++ "part <id tbn, abbr Tbn, inst tenor-trombone>\n"
+            , "part <id hrn,  abbr Hrn,       inst horn>"
+            , "part <id tpt,  abbr Tpt,       inst bflat-trumpet>"
+            , "part <id tbn,  abbr Tbn,       inst tenor-trombone>"
 
-            ++ "part <id pno, abbr Pno, inst piano>\n"
+            , "part <id pno,  abbr Pno,       inst piano>"
 
-            ++ "part <id vl1, abbr \"Vl I\", inst violin>\n"
-            ++ "part <id vl2, abbr \"Vl II\", inst violin>\n"
-            ++ "part <id vla, abbr Vla, inst viola>\n"
-            ++ "part <id vc,  abbr Vc, name Violoncello, inst cello>\n"
-            ++ "part <id db,  abbr Kb, inst bass>\n"
+            , "part <id vb,   abbr Vib,       inst vibraphone>"
+            , "part <id crot, abbr Crot,      inst vibraphone, name Crotales>"
+
+            , "part <id vl1,  abbr \"Vl I\",  inst violin>"
+            , "part <id vl2,  abbr \"Vl II\", inst violin>"
+            , "part <id vla,  abbr Vla,       inst viola>"
+            , "part <id vc,   abbr Vc,        inst cello, name Violoncello>"
+            , "part <id db,   abbr Kb,        inst bass>" ]
 
 
-events =  "\n"
-       ++ "time 0 dur 1 pitch 60 part fl;\n"
-       ++ "time + dur 1 pitch 67 part ob;"
+
+tptPart =   join "\n" [ "time 0 dur 1 pitch 60;"
+            , "time 1 pitch 67 [>] [.];"
+            , "time 2 pitch 62 [!];"
+            , "time 3 pitch 58 [sfz];" ]
+
+
+events =  "\n" 
+       ++ "part tpt\n"
+       ++ tptPart
+       ++ "\n"
+       ++ "part db clef bass\n"
+       ++ "time 3 pitch 38[>];"
 
 output = header ++ "\n\n" ++ instruments ++ "\n\n" ++ events 
 
@@ -56,16 +76,41 @@ output = header ++ "\n\n" ++ instruments ++ "\n\n" ++ events
 
 
 
-
 ; ============================================================
-; Fomus
+; FOMUS
 
-SCORE_EDITOR  = "/Applications/Sibelius 6.app"
-; SCORE_EDITOR  = "/Applications/MuseScore.app"
-; SCORE_EDITOR  = "/Applications/Finale 2009/Finale 2009.app"
+time    = prec
+dur     = prec
+grace   = prec
+pitch   = prec
+part    = int
+voice   = int
+dynamic = float
 
-FILE_LOCATION = "/Users/hans/Documents/Musik/Skikt/output/"
-FILE_NAME     = "out"
+setting = (str, (str | num | [str] | [num]))
+mark    = (`!) | (`*) | (`+) | (`-) | (`.) | (`/) | "!" | "*" | "+" | "-" | "."
+
+note    = (time, dur, grace, voice, part, pitch, dynamic, [mark], [setting])
+rest    = (time, dur, grace, voice, part, [mark], [setting])
+measure = (time, dur, [setting])
+event   = note | rest | measure
+
+; inst = ([percinst], [staff], [import], [export], [setting])
+; percinst = 1
+
+; part = (inst, [event], [setting])
+; score = ([part], [setting])
+
+; metapart = ...
+; measdef = ([setting])
+; staff = ([clef], [setting])
+
+
+
+
+
+
+; Output
 
 fmsFile = FILE_LOCATION ++ FILE_NAME ++ ".fms"
 xmlFile = FILE_LOCATION ++ FILE_NAME ++ ".xml"
@@ -74,5 +119,9 @@ xmlFile = FILE_LOCATION ++ FILE_NAME ++ ".xml"
 ; () -> ()
 export _ = do
     writeFile fmsFile output
-    run [ "fomus", fmsFile, "-o", xmlFile ] 
+    run [ "fomus", fmsFile, "-o", xmlFile ]
+    ; Workaround issue with FOMUS and clefs 
+    replaceFile xmlFile 
+        [ "<sign>F</sign>", "<sign>C</sign>" ]
+        [ "<sign>F</sign><line>4</line>", "<sign>C</sign><line>3</line>" ]
     run [ "open", "-a", SCORE_EDITOR, xmlFile ]

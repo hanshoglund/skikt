@@ -1,0 +1,26 @@
+title Skikt
+
+part <id fl,  abbr Fl,         inst flute>
+part <id ob,   abbr Ob,        inst oboe>
+part <id cl,   abbr Kl,        inst bflat-clarinet>
+part <id bsn,  abbr Fag,       inst bassoon>
+part <id hrn,  abbr Hrn,       inst horn>
+part <id tpt,  abbr Tpt,       inst bflat-trumpet>
+part <id tbn,  abbr Tbn,       inst tenor-trombone>
+part <id pno,  abbr Pno,       inst piano>
+part <id vb,   abbr Vib,       inst vibraphone>
+part <id crot, abbr Crot,      inst vibraphone, name Crotales>
+part <id vl1,  abbr "Vl I",  inst violin>
+part <id vl2,  abbr "Vl II", inst violin>
+part <id vla,  abbr Vla,       inst viola>
+part <id vc,   abbr Vc,        inst cello, name Violoncello>
+part <id db,   abbr Kb,        inst bass>
+
+
+part tpt
+time 0 dur 1 pitch 60;
+time 1 pitch 67 [>] [.];
+time 2 pitch 62 [!];
+time 3 pitch 58 [sfz];
+part db clef bass
+time 3 pitch 38[>];
