@@ -10,6 +10,8 @@ part <id tbn,  abbr Tbn,       inst tenor-trombone>
 part <id pno,  abbr Pno,       inst piano>
 part <id vb,   abbr Vib,       inst vibraphone>
 part <id crot, abbr Crot,      inst vibraphone, name Crotales>
+inst <id perc1, template percussion, percinsts (snare-drum bass-drum)>
+part <id perc, abbr Perc       inst perc1>
 part <id vl1,  abbr "Vl I",  inst violin>
 part <id vl2,  abbr "Vl II", inst violin>
 part <id vla,  abbr Vla,       inst viola>
@@ -18,9 +20,121 @@ part <id db,   abbr Kb,        inst bass>
 
 
 part tpt
-time 0 dur 1 pitch 60;
-time 1 pitch 67 [>] [.];
-time 2 pitch 62 [!];
-time 3 pitch 58 [sfz];
+time + dur 5/2 pitch 60;
+time + pitch 67 [>] [.];
+time + pitch 62 [!];
+time + pitch 58 [sfz];
 part db clef bass
-time 3 pitch 38[>];
+time + pitch 38[>];
+
+part tpt
+time + dur 5/2 pitch 60;
+time + pitch 67 [>] [.];
+time + pitch 62 [!];
+time + pitch 58 [sfz];
+part db clef bass
+time + pitch 38[>];
+
+part tpt
+time + dur 5/2 pitch 60;
+time + pitch 67 [>] [.];
+time + pitch 62 [!];
+time + pitch 58 [sfz];
+part db clef bass
+time + pitch 38[>];
+
+part tpt
+time + dur 5/2 pitch 60;
+time + pitch 67 [>] [.];
+time + pitch 62 [!];
+time + pitch 58 [sfz];
+part db clef bass
+time + pitch 38[>];
+
+part tpt
+time + dur 5/2 pitch 60;
+time + pitch 67 [>] [.];
+time + pitch 62 [!];
+time + pitch 58 [sfz];
+part db clef bass
+time + pitch 38[>];
+
+part tpt
+time + dur 5/2 pitch 60;
+time + pitch 67 [>] [.];
+time + pitch 62 [!];
+time + pitch 58 [sfz];
+part db clef bass
+time + pitch 38[>];
+
+part tpt
+time + dur 5/2 pitch 60;
+time + pitch 67 [>] [.];
+time + pitch 62 [!];
+time + pitch 58 [sfz];
+part db clef bass
+time + pitch 38[>];
+
+part tpt
+time + dur 5/2 pitch 60;
+time + pitch 67 [>] [.];
+time + pitch 62 [!];
+time + pitch 58 [sfz];
+part db clef bass
+time + pitch 38[>];
+
+part tpt
+time + dur 5/2 pitch 60;
+time + pitch 67 [>] [.];
+time + pitch 62 [!];
+time + pitch 58 [sfz];
+part db clef bass
+time + pitch 38[>];
+
+part tpt
+time + dur 5/2 pitch 60;
+time + pitch 67 [>] [.];
+time + pitch 62 [!];
+time + pitch 58 [sfz];
+part db clef bass
+time + pitch 38[>];
+
+part tpt
+time + dur 5/2 pitch 60;
+time + pitch 67 [>] [.];
+time + pitch 62 [!];
+time + pitch 58 [sfz];
+part db clef bass
+time + pitch 38[>];
+
+part tpt
+time + dur 5/2 pitch 60;
+time + pitch 67 [>] [.];
+time + pitch 62 [!];
+time + pitch 58 [sfz];
+part db clef bass
+time + pitch 38[>];
+
+part tpt
+time + dur 5/2 pitch 60;
+time + pitch 67 [>] [.];
+time + pitch 62 [!];
+time + pitch 58 [sfz];
+part db clef bass
+time + pitch 38[>];
+
+part tpt
+time + dur 5/2 pitch 60;
+time + pitch 67 [>] [.];
+time + pitch 62 [!];
+time + pitch 58 [sfz];
+part db clef bass
+time + pitch 38[>];
+
+part tpt
+time + dur 5/2 pitch 60;
+time + pitch 67 [>] [.];
+time + pitch 62 [!];
+time + pitch 58 [sfz];
+part db clef bass
+time + pitch 38[>];

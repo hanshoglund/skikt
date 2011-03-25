@@ -38,7 +38,9 @@ instruments = join "\n"
 
             , "part <id vb,   abbr Vib,       inst vibraphone>"
             , "part <id crot, abbr Crot,      inst vibraphone, name Crotales>"
-
+            , "inst <id perc1, template percussion, percinsts (snare-drum bass-drum)>"
+            , "part <id perc, abbr Perc       inst perc1>"
+            
             , "part <id vl1,  abbr \"Vl I\",  inst violin>"
             , "part <id vl2,  abbr \"Vl II\", inst violin>"
             , "part <id vla,  abbr Vla,       inst viola>"
@@ -47,10 +49,10 @@ instruments = join "\n"
 
 
 
-tptPart =   join "\n" [ "time 0 dur 1 pitch 60;"
-            , "time 1 pitch 67 [>] [.];"
-            , "time 2 pitch 62 [!];"
-            , "time 3 pitch 58 [sfz];" ]
+tptPart =   join "\n" [ "time + dur 5/2 pitch 60;"
+            , "time + pitch 67 [>] [.];"
+            , "time + pitch 62 [!];"
+            , "time + pitch 58 [sfz];" ]
 
 
 events =  "\n" 
@@ -58,9 +60,11 @@ events =  "\n"
        ++ tptPart
        ++ "\n"
        ++ "part db clef bass\n"
-       ++ "time 3 pitch 38[>];"
+       ++ "time + pitch 38[>];"
+       
+events2 = join "\n" (take 15 (loop events)) 
 
-output = header ++ "\n\n" ++ instruments ++ "\n\n" ++ events 
+output = header ++ "\n\n" ++ instruments ++ "\n\n" ++ events2
 
 
 
@@ -120,8 +124,11 @@ xmlFile = FILE_LOCATION ++ FILE_NAME ++ ".xml"
 export _ = do
     writeFile fmsFile output
     run [ "fomus", fmsFile, "-o", xmlFile ]
-    ; Workaround issue with FOMUS and clefs 
+    
+    ; Workaround issue with FOMUS and clefs
+    print "adjusting fomus clefs..." 
     replaceFile xmlFile 
         [ "<sign>F</sign>", "<sign>C</sign>" ]
         [ "<sign>F</sign><line>4</line>", "<sign>C</sign><line>3</line>" ]
+    
     run [ "open", "-a", SCORE_EDITOR, xmlFile ]
