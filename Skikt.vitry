@@ -19,12 +19,9 @@ FILE_NAME     = "out"
 
 
 
-
-
-
 header = "title Skikt"
 
-instruments = join "\n" 
+instruments = join "\n"
             [ "part <id fl,   abbr Fl,        inst flute>"
             , "part <id ob,   abbr Ob,        inst oboe>"
             , "part <id cl,   abbr Kl,        inst bflat-clarinet>"
@@ -40,7 +37,7 @@ instruments = join "\n"
             , "part <id crot, abbr Crot,      inst vibraphone, name Crotales>"
             , "inst <id perc1, template percussion, percinsts (snare-drum bass-drum)>"
             , "part <id perc, abbr Perc       inst perc1>"
-            
+
             , "part <id vl1,  abbr \"Vl I\",  inst violin>"
             , "part <id vl2,  abbr \"Vl II\", inst violin>"
             , "part <id vla,  abbr Vla,       inst viola>"
@@ -55,14 +52,14 @@ tptPart =   join "\n" [ "time + dur 8/5 pitch 60;"
             , "time + pitch 58 [sfz];" ]
 
 
-events =  "\n" 
+events =  "\n"
        ++ "part tpt\n"
        ++ tptPart
        ++ "\n"
        ++ "part db clef bass\n"
        ++ "time + pitch 38[>];"
-       
-events2 = join "\n" (take 15 (loop events)) 
+
+events2 = join "\n" (take 15 (loop events))
 
 output = header ++ "\n\n" ++ instruments ++ "\n\n" ++ events2
 
@@ -107,89 +104,89 @@ dynamic = float
 setting = (str, (str | num | [str] | [num]))
 
 ; Marks can be represented by a single string (same as in FOMUS files)
-; or as a tuple, containing arguments. We define some common cases as 
+; or as a tuple, containing arguments. We define some common cases as
 ; symbols as well.
 
 ; For a througout description, see the FOMUS documentation
 
-markId  = "(.." | "*" | "+" | "-" | "." 
-        | ".((." | ".(." | "..)" | "..))" 
-        | "..<" | "..>" | "." 
-        | "dash)" | "..dash))" 
-        | "..dot)" | "..dot))" 
-        | "..grace)" 
-        | "..ped" 
-        | "..tup" 
-        | "..x!" | "..x^" | "..x_" | ".<." | ".>." 
-        | ".dash((." | ".dash(." 
-        | ".dot((." | ".dot(." 
-        | ".grace(." 
-        | ".ped." 
-        | ".x!." | ".x^." | ".x_." 
-        | "/" | "/." 
-        | "0" 
-        | "<.." | ">" | ">.." 
-        | "^" 
-        | "arco" | "arp" | "arp^" | "arp_" 
-        | "artharm-base" | "artharm-sounding" | "artharm-touched" 
-        | "bellsup" 
-        | "break<" | "break>" 
-        | "breath" | "breath<" | "breath>" 
-        | "cuivre" 
-        | "damp" 
+markId  = "(.." | "*" | "+" | "-" | "."
+        | ".((." | ".(." | "..)" | "..))"
+        | "..<" | "..>" | "."
+        | "dash)" | "..dash))"
+        | "..dot)" | "..dot))"
+        | "..grace)"
+        | "..ped"
+        | "..tup"
+        | "..x!" | "..x^" | "..x_" | ".<." | ".>."
+        | ".dash((." | ".dash(."
+        | ".dot((." | ".dot(."
+        | ".grace(."
+        | ".ped."
+        | ".x!." | ".x^." | ".x_."
+        | "/" | "/."
+        | "0"
+        | "<.." | ">" | ">.."
+        | "^"
+        | "arco" | "arp" | "arp^" | "arp_"
+        | "artharm-base" | "artharm-sounding" | "artharm-touched"
+        | "bellsup"
+        | "break<" | "break>"
+        | "breath" | "breath<" | "breath>"
+        | "cuivre"
+        | "damp"
         | "dash((.." | "dash(.."
-        | "dot((.." | "dot(.." 
-        | "downbow" 
-        | "dyn" 
-        | "etouf" 
-        | "f" 
-        | "ferm" | "ferm-long" | "ferm-short" | "ferm-verylong" 
-        | "ff" | "fff" | "ffff" | "fffz" | "ffz" 
-        | "flaut" 
-        | "flt" 
-        | "fz" 
-        | "gliss<" | "gliss>" 
+        | "dot((.." | "dot(.."
+        | "downbow"
+        | "dyn"
+        | "etouf"
+        | "f"
+        | "ferm" | "ferm-long" | "ferm-short" | "ferm-verylong"
+        | "ff" | "fff" | "ffff" | "fffz" | "ffz"
+        | "flaut"
+        | "flt"
+        | "fz"
+        | "gliss<" | "gliss>"
         | "grace(.."
-        | "leg" 
-        | "legno" 
-        | "longtr" | "longtr2" 
-        | "lv" 
-        | "mf" 
-        | "moltoleg" | "moltovib" 
-        | "mp" 
-        | "mute" 
-        | "natharm-sounding" | "natharm-string" | "natharm-touched" 
-        | "nonleg" 
-        | "nonvib" 
-        | "o" 
-        | "ord" 
-        | "p" 
-        | "ped.." 
-        | "pizz" 
-        | "pont" 
-        | "port<" | "port>" 
-        | "pp" | "ppp" | "pppp" | "ppppp" | "pppppp" 
-        | "punta" 
-        | "rf" | "rfz" 
-        | "ric" 
-        | "salt" 
-        | "sf" | "sff" | "sfff" | "sfffz" | "sffz" | "sfz" 
-        | "slap" 
-        | "snap" | "snappizz" 
-        | "spic" 
-        | "sul" | "table" | "tall" | "tasto" 
-        | "tempo" 
-        | "trem" | "trem2" 
-        | "tup.." 
-        | "unmute" | "upbow" 
-        | "vib" 
+        | "leg"
+        | "legno"
+        | "longtr" | "longtr2"
+        | "lv"
+        | "mf"
+        | "moltoleg" | "moltovib"
+        | "mp"
+        | "mute"
+        | "natharm-sounding" | "natharm-string" | "natharm-touched"
+        | "nonleg"
+        | "nonvib"
+        | "o"
+        | "ord"
+        | "p"
+        | "ped.."
+        | "pizz"
+        | "pont"
+        | "port<" | "port>"
+        | "pp" | "ppp" | "pppp" | "ppppp" | "pppppp"
+        | "punta"
+        | "rf" | "rfz"
+        | "ric"
+        | "salt"
+        | "sf" | "sff" | "sfff" | "sfffz" | "sffz" | "sfz"
+        | "slap"
+        | "snap" | "snappizz"
+        | "spic"
+        | "sul" | "table" | "tall" | "tasto"
+        | "tempo"
+        | "trem" | "trem2"
+        | "tup.."
+        | "unmute" | "upbow"
+        | "vib"
         | "x" | "x!" | "x!.." | "x^" | "x^.." | "x_" | "x_.." | "~"
         | (`-) | (`.) | (`!) | (`+)
-        | `f | `ff | `fff | `ffff 
-        | `mp | `mf 
+        | `f | `ff | `fff | `ffff
+        | `mp | `mf
         | `p | `pp | `ppp | `pppp
 
-mark    = markId 
+mark    = markId
         | ( markId, num )
         | ( markId, str )
         | ( markId, num, str )
@@ -213,14 +210,21 @@ note    = ( time, dur, grace, voice, part, pitch, dynamic, [mark], [setting] )
         | ( time, dur, grace, voice, part, pitch, [mark] )
         | ( time, dur, grace, voice, part, pitch )
 
+; FOMUS creates rests implicitly, the following form is only
+; useful if you want to define marks or settings apart from
+; a particular note event.
+
 rest    = ( time, dur, grace, voice, part, [mark], [setting] )
         | ( time, dur, grace, voice, part, [mark] )
         | ( time, dur, grace, voice, part, [setting] )
         | ( time, dur, grace, voice, part )
 
-measure = ( time, dur, [setting] )
+; The same goes for measures. Measdefs are just to create
+; explicit downbeats/time signature changes and so on.
 
-event   = note | rest | measure
+measdef = ( time, dur, [setting] )
+
+event   = note | rest | measdef
 
 ; instrument = ...
 ; part = (instrument, [event], [setting])
@@ -233,12 +237,12 @@ event   = note | rest | measure
 
 ; Returns a string representation of the given FOMUS data,
 ; in the FOMUS native file format.
- 
+
 ; score -> str
 fomus data = match data
-    ; score = 
-    ; part = 
-    ; metapart = 
+    ; score =
+    ; part =
+    ; metapart =
     ; partmap =
     ; inst =
     ; measure
@@ -257,11 +261,11 @@ xmlFile = FILE_LOCATION ++ FILE_NAME ++ ".xml"
 export _ = do
     writeFile fmsFile output
     run [ "fomus", fmsFile, "-o", xmlFile ]
-    
+
     ; Workaround issue with FOMUS and clefs
-    print "adjusting fomus clefs..." 
-    replaceFile xmlFile 
+    print "adjusting fomus clefs..."
+    replaceFile xmlFile
         [ "<sign>F</sign>", "<sign>C</sign>" ]
         [ "<sign>F</sign><line>4</line>", "<sign>C</sign><line>3</line>" ]
-    
+
     run [ "open", "-a", SCORE_EDITOR, xmlFile ]
