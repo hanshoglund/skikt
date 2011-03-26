@@ -83,7 +83,15 @@ output = header ++ "\n\n" ++ instruments ++ "\n\n" ++ events2
 ; ============================================================
 ; FOMUS
 
-; Basic datatypes
+; Interface to the FOMUS notation engine by David Psenicka
+; See http://fomus.sourceforge.net/
+
+; The workflow is to create a data structure representing a score
+; and pass it to the fomus function. This function generates a
+; text on a format understood by FOMUS, which may be written to
+; a fms file.
+
+
 time    = prec
 dur     = prec
 grace   = prec
@@ -92,37 +100,89 @@ part    = int
 voice   = int
 dynamic = float
 
+
 ; Mapping from string to value
-; May be included in most FOMUS definitions
+; May be included in most definitions
+
 setting = (str, (str | num | [str] | [num]))
 
 ; Marks can be represented by a single string (same as in FOMUS files)
 ; or as a tuple, containing arguments. We define some common cases as 
 ; symbols as well.
 
-; For a througout list, see the FOMUS documentation
+; For a througout description, see the FOMUS documentation
 
-markId  = "(.." | "*" | "+" | "-" | "." | ".((." | ".(." | "..)" | "..))" | "..<" | "..>" | "." 
-        | "dash)" | "..dash))" | "..dot)" | "..dot))" | "..grace)" | "..ped" | "..tup" 
+markId  = "(.." | "*" | "+" | "-" | "." 
+        | ".((." | ".(." | "..)" | "..))" 
+        | "..<" | "..>" | "." 
+        | "dash)" | "..dash))" 
+        | "..dot)" | "..dot))" 
+        | "..grace)" 
+        | "..ped" 
+        | "..tup" 
         | "..x!" | "..x^" | "..x_" | ".<." | ".>." 
-        | ".dash((." | ".dash(." | ".dot((." | ".dot(." | ".grace(." | ".ped." 
-        | ".x!." | ".x^." | ".x_." | "/" | "/." | "0" | "<.." | ">" | ">.." | "^" 
+        | ".dash((." | ".dash(." 
+        | ".dot((." | ".dot(." 
+        | ".grace(." 
+        | ".ped." 
+        | ".x!." | ".x^." | ".x_." 
+        | "/" | "/." 
+        | "0" 
+        | "<.." | ">" | ">.." 
+        | "^" 
         | "arco" | "arp" | "arp^" | "arp_" 
         | "artharm-base" | "artharm-sounding" | "artharm-touched" 
-        | "bellsup" | "break<" | "break>" | "breath" | "breath<" | "breath>" 
+        | "bellsup" 
+        | "break<" | "break>" 
+        | "breath" | "breath<" | "breath>" 
         | "cuivre" 
-        | "damp" | "dash((.." | "dash(.." | "dot((.." | "dot(.." | "downbow" | "dyn" 
-        | "etouf" | "f" | "ferm" | "ferm-long" | "ferm-short" | "ferm-verylong" 
-        | "ff" | "fff" | "ffff" | "fffz" | "ffz" | "flaut" | "flt" | "fz" 
-        | "gliss<" | "gliss>" | "grace(.." | "leg" | "legno" | "longtr" | "longtr2" | "lv" 
-        | "mf" | "moltoleg" | "moltovib" | "mp" | "mute" 
+        | "damp" 
+        | "dash((.." | "dash(.."
+        | "dot((.." | "dot(.." 
+        | "downbow" 
+        | "dyn" 
+        | "etouf" 
+        | "f" 
+        | "ferm" | "ferm-long" | "ferm-short" | "ferm-verylong" 
+        | "ff" | "fff" | "ffff" | "fffz" | "ffz" 
+        | "flaut" 
+        | "flt" 
+        | "fz" 
+        | "gliss<" | "gliss>" 
+        | "grace(.."
+        | "leg" 
+        | "legno" 
+        | "longtr" | "longtr2" 
+        | "lv" 
+        | "mf" 
+        | "moltoleg" | "moltovib" 
+        | "mp" 
+        | "mute" 
         | "natharm-sounding" | "natharm-string" | "natharm-touched" 
-        | "nonleg" | "nonvib" | "o" | "ord" 
-        | "p" | "ped.." | "pizz" | "pont" | "port<" | "port>" 
-        | "pp" | "ppp" | "pppp" | "ppppp" | "pppppp" | "punta" 
-        | "rf" | "rfz" | "ric" | "salt" | "sf" | "sff" | "sfff" | "sfffz" | "sffz" | "sfz" 
-        | "slap" | "snap" | "snappizz" | "spic" | "sul" | "table" | "tall" | "tasto" | "tempo" 
-        | "trem" | "trem2" | "tup.." | "unmute" | "upbow" | "vib" 
+        | "nonleg" 
+        | "nonvib" 
+        | "o" 
+        | "ord" 
+        | "p" 
+        | "ped.." 
+        | "pizz" 
+        | "pont" 
+        | "port<" | "port>" 
+        | "pp" | "ppp" | "pppp" | "ppppp" | "pppppp" 
+        | "punta" 
+        | "rf" | "rfz" 
+        | "ric" 
+        | "salt" 
+        | "sf" | "sff" | "sfff" | "sfffz" | "sffz" | "sfz" 
+        | "slap" 
+        | "snap" | "snappizz" 
+        | "spic" 
+        | "sul" | "table" | "tall" | "tasto" 
+        | "tempo" 
+        | "trem" | "trem2" 
+        | "tup.." 
+        | "unmute" | "upbow" 
+        | "vib" 
         | "x" | "x!" | "x!.." | "x^" | "x^.." | "x_" | "x_.." | "~"
         | (`-) | (`.) | (`!) | (`+)
         | `f | `ff | `fff | `ffff 
@@ -143,11 +203,16 @@ p       = `p
 pp      = `pp
 ppp     = `ppp
 
+; Events are sparse structures
+; TODO sticky values:
+;       time, duration, pitch, part, voice, dynamic, grace
+
 note    = ( time, dur, grace, voice, part, pitch, dynamic, [mark], [setting] )
         | ( time, dur, grace, voice, part, pitch, dynamic, [mark] )
         | ( time, dur, grace, voice, part, pitch, dynamic )
         | ( time, dur, grace, voice, part, pitch, [mark] )
         | ( time, dur, grace, voice, part, pitch )
+
 rest    = ( time, dur, grace, voice, part, [mark], [setting] )
         | ( time, dur, grace, voice, part, [mark] )
         | ( time, dur, grace, voice, part, [setting] )
@@ -157,14 +222,27 @@ measure = ( time, dur, [setting] )
 
 event   = note | rest | measure
 
-; part = (inst, [event], [setting])
+; instrument = ...
+; part = (instrument, [event], [setting])
 ; score = ([part], [setting])
 
 ; metapart = ...
-; measdef = ([setting])
 ; staff = ([clef], [setting])
 
 
+
+; Returns a string representation of the given FOMUS data,
+; in the FOMUS native file format.
+ 
+; score -> str
+fomus data = match data
+    ; score = 
+    ; part = 
+    ; metapart = 
+    ; partmap =
+    ; inst =
+    ; measure
+    [ _ : event ] = 1
 
 
 
