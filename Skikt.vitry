@@ -25,7 +25,7 @@ FILE_NAME     = "out"
 header = "title Skikt"
 
 instruments = join "\n" 
-            [ "part <id fl,  abbr Fl,         inst flute>"
+            [ "part <id fl,   abbr Fl,        inst flute>"
             , "part <id ob,   abbr Ob,        inst oboe>"
             , "part <id cl,   abbr Kl,        inst bflat-clarinet>"
             , "part <id bsn,  abbr Fag,       inst bassoon>"
@@ -49,7 +49,7 @@ instruments = join "\n"
 
 
 
-tptPart =   join "\n" [ "time + dur 5/2 pitch 60;"
+tptPart =   join "\n" [ "time + dur 8/5 pitch 60;"
             , "time + pitch 67 [>] [.];"
             , "time + pitch 62 [!];"
             , "time + pitch 58 [sfz];" ]
@@ -95,12 +95,16 @@ setting = (str, (str | num | [str] | [num]))
 mark    = (`!) | (`*) | (`+) | (`-) | (`.) | (`/) | "!" | "*" | "+" | "-" | "."
 
 note    = (time, dur, grace, voice, part, pitch, dynamic, [mark], [setting])
+        | (time, dur, grace, voice, part, pitch, dynamic, [mark])
+        | (time, dur, grace, voice, part, pitch, dynamic)
+        | (time, dur, grace, voice, part, pitch, [mark])
+        | (time, dur, grace, voice, part, pitch)
 rest    = (time, dur, grace, voice, part, [mark], [setting])
+        | (time, dur, grace, voice, part, [mark])
+        | (time, dur, grace, voice, part, [setting])
+        | (time, dur, grace, voice, part)
 measure = (time, dur, [setting])
 event   = note | rest | measure
-
-; inst = ([percinst], [staff], [import], [export], [setting])
-; percinst = 1
 
 ; part = (inst, [event], [setting])
 ; score = ([part], [setting])
