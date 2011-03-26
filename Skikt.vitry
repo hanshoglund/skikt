@@ -83,6 +83,7 @@ output = header ++ "\n\n" ++ instruments ++ "\n\n" ++ events2
 ; ============================================================
 ; FOMUS
 
+; Basic datatypes
 time    = prec
 dur     = prec
 grace   = prec
@@ -91,19 +92,69 @@ part    = int
 voice   = int
 dynamic = float
 
+; Mapping from string to value
+; May be included in most FOMUS definitions
 setting = (str, (str | num | [str] | [num]))
-mark    = (`!) | (`*) | (`+) | (`-) | (`.) | (`/) | "!" | "*" | "+" | "-" | "."
 
-note    = (time, dur, grace, voice, part, pitch, dynamic, [mark], [setting])
-        | (time, dur, grace, voice, part, pitch, dynamic, [mark])
-        | (time, dur, grace, voice, part, pitch, dynamic)
-        | (time, dur, grace, voice, part, pitch, [mark])
-        | (time, dur, grace, voice, part, pitch)
-rest    = (time, dur, grace, voice, part, [mark], [setting])
-        | (time, dur, grace, voice, part, [mark])
-        | (time, dur, grace, voice, part, [setting])
-        | (time, dur, grace, voice, part)
-measure = (time, dur, [setting])
+; Marks can be represented by a single string (same as in FOMUS files)
+; or as a tuple, containing arguments. We define some common cases as 
+; symbols as well.
+
+; For a througout list, see the FOMUS documentation
+
+markId  = "(.." | "*" | "+" | "-" | "." | ".((." | ".(." | "..)" | "..))" | "..<" | "..>" | "." 
+        | "dash)" | "..dash))" | "..dot)" | "..dot))" | "..grace)" | "..ped" | "..tup" 
+        | "..x!" | "..x^" | "..x_" | ".<." | ".>." 
+        | ".dash((." | ".dash(." | ".dot((." | ".dot(." | ".grace(." | ".ped." 
+        | ".x!." | ".x^." | ".x_." | "/" | "/." | "0" | "<.." | ">" | ">.." | "^" 
+        | "arco" | "arp" | "arp^" | "arp_" 
+        | "artharm-base" | "artharm-sounding" | "artharm-touched" 
+        | "bellsup" | "break<" | "break>" | "breath" | "breath<" | "breath>" 
+        | "cuivre" 
+        | "damp" | "dash((.." | "dash(.." | "dot((.." | "dot(.." | "downbow" | "dyn" 
+        | "etouf" | "f" | "ferm" | "ferm-long" | "ferm-short" | "ferm-verylong" 
+        | "ff" | "fff" | "ffff" | "fffz" | "ffz" | "flaut" | "flt" | "fz" 
+        | "gliss<" | "gliss>" | "grace(.." | "leg" | "legno" | "longtr" | "longtr2" | "lv" 
+        | "mf" | "moltoleg" | "moltovib" | "mp" | "mute" 
+        | "natharm-sounding" | "natharm-string" | "natharm-touched" 
+        | "nonleg" | "nonvib" | "o" | "ord" 
+        | "p" | "ped.." | "pizz" | "pont" | "port<" | "port>" 
+        | "pp" | "ppp" | "pppp" | "ppppp" | "pppppp" | "punta" 
+        | "rf" | "rfz" | "ric" | "salt" | "sf" | "sff" | "sfff" | "sfffz" | "sffz" | "sfz" 
+        | "slap" | "snap" | "snappizz" | "spic" | "sul" | "table" | "tall" | "tasto" | "tempo" 
+        | "trem" | "trem2" | "tup.." | "unmute" | "upbow" | "vib" 
+        | "x" | "x!" | "x!.." | "x^" | "x^.." | "x_" | "x_.." | "~"
+        | (`-) | (`.) | (`!) | (`+)
+        | `f | `ff | `fff | `ffff 
+        | `mp | `mf 
+        | `p | `pp | `ppp | `pppp
+
+mark    = markId 
+        | ( markId, num )
+        | ( markId, str )
+        | ( markId, num, str )
+
+fff     = `fff
+ff      = `ff
+f       = `f
+mf      = `mf
+mp      = `mp
+p       = `p
+pp      = `pp
+ppp     = `ppp
+
+note    = ( time, dur, grace, voice, part, pitch, dynamic, [mark], [setting] )
+        | ( time, dur, grace, voice, part, pitch, dynamic, [mark] )
+        | ( time, dur, grace, voice, part, pitch, dynamic )
+        | ( time, dur, grace, voice, part, pitch, [mark] )
+        | ( time, dur, grace, voice, part, pitch )
+rest    = ( time, dur, grace, voice, part, [mark], [setting] )
+        | ( time, dur, grace, voice, part, [mark] )
+        | ( time, dur, grace, voice, part, [setting] )
+        | ( time, dur, grace, voice, part )
+
+measure = ( time, dur, [setting] )
+
 event   = note | rest | measure
 
 ; part = (inst, [event], [setting])
