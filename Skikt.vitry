@@ -19,6 +19,7 @@ FILE_NAME     = "out"
 info  = [ ("title", "Skikt")
         , ("author", "HH 2011") ]
     
+insts = [ ("perc1", "percussion", ["snare-drum", "bass-drum"]) ]
 winds = [ ("fl",   "flute",             [ ("abbr", "Fl") ])
         , ("ob",   "oboe",              [ ("abbr", "Ob") ])
         , ("cl",   "bflat-clarinet",    [ ("abbr", "Kl") ])
@@ -26,10 +27,12 @@ winds = [ ("fl",   "flute",             [ ("abbr", "Fl") ])
 brass = [ ("hrn",  "horn",              [ ("abbr", "Hrn") ])
         , ("tpt",  "bflat-trumpet",     [ ("abbr", "Tpt") ])
         , ("tbn",  "tenor-trombone",    [ ("abbr", "Tbn") ]) ]
+            
 percs = [ ("pno",  "piano",             [ ("abbr", "Pno") ])
         , ("vib",  "vibraphone",        [ ("abbr", "Vib") ])
         , ("crot", "vibraphone",        [ ("abbr", "Crot")
-                                        , ("name", "Crotales") ]) ]        
+                                        , ("name", "Crotales") ])        
+        , ("perc", "perc1",             [ ("abbr", "Perc") ]) ]
 strs    = [ ("vl1",  "violin",            [ ("abbr", "Vl I") ])
         , ("vl2",  "violin",            [ ("abbr", "Vl II") ])
         , ("vla",  "viola",             [ ("abbr", "Vla") ])
@@ -38,7 +41,7 @@ strs    = [ ("vl1",  "violin",            [ ("abbr", "Vl I") ])
         , ("db",   "bass",              [ ("abbr", "Kb") ]) ]
 
 parts = winds ++ brass ++ percs ++ strs
-
+decls = insts ++ parts
 
 ; header = "title Skikt"
 ;
@@ -88,11 +91,11 @@ parts = winds ++ brass ++ percs ++ strs
 
 
 main _ = do
-    text = fomus ([], parts, info)
+    text = fomus ([], decls, info)
     print text
     export text
 
-test _ = fomus ([], parts, info)
+test _ = fomus ([], decls, info)
 
 
 
@@ -126,11 +129,15 @@ setting  = (str, (str | num | [str] | [num]))
 
 
 ; Containers
-template = str
-perc     = (template, [setting])
+templ    = ident
+perc     = templ 
+         | (ident, [setting])
 clef     = [setting]
 staff    = ([clef], [setting])
-inst     = ident | (template, [perc], [staff], [setting])
+inst     = templ
+         | (ident, templ, [perc])
+         | (ident, templ, [perc], [staff])
+         | (ident, templ, [perc], [staff], [setting])
 part     = (ident, inst, [setting])
 ; metapart = ([part, metapart], [setting]) TODO
 
@@ -247,11 +254,10 @@ rest    = ( time, dur, grace, voice, part, [mark], [setting] )
 ; explicit downbeats/time signature changes and so on.
 measdef = ( time, dur, [setting] )
 
-event   = note 
-        | rest 
-        | measdef
-score   =  ([event], [part], [setting])
-        |  ([], [part], [setting])
+event   = note | rest | measdef
+decl    = part | inst | perc | clef | staff
+score   =  ([event], [decl], [setting])
+        |  ([], [decl], [setting])
 
 ; =============================================================================
 
@@ -262,25 +268,31 @@ fomus data = match data
     ; TODO perc
     ; TODO clef
     ; TODO staff
-    ; TODO inst
+    (id, templ, percs)        : inst = "inst <"
+                                           ++ "id " ++ id
+                                    ++ " " ++ "template " ++ fomus templ 
+                                    ++ " " ++ "percinsts " ++ fomusList percs
+                                    ++ ">"
     ; TODO mark
     ; TODO note
     ; TODO rest
     ; TODO measdef
-    (name, value)            : setting = fomus name ++ " " ++ fomus (unescape value)
-    (id, inst, settings)  : part    = "part <"
+    (name, value)             : setting = fomus name ++ " " ++ fomus (unescape value)
+    (id, inst, settings)      : part    = "part <"
                                            ++ "id "   ++ id 
                                     ++ " " ++ "inst " ++ fomus inst 
                                     ++ " " ++ fomus settings 
                                     ++ ">"    
-    (events, parts, settings) : score  = join "\n\n" [fomus settings, fomus parts, fomus events]
+    (events, decls, settings) : score  = join "\n\n" [fomus settings, fomus decls, fomus events]
     
+    event    : [event]      = join "\n" (map fomus event)
+    decls    : [decl]       = join "\n" (map fomus decls)
     settings : [setting]    = join " " (map fomus settings)
-    parts    : [part]       = join "\n" (map fomus parts)
-    
     x : num                 = x
     x : str                 = x
     x : ()                  = ""
+
+fomusList xs = "(" ++ join " " (map fomus xs) ++ ")"
 
 
 ; =============================================================================
