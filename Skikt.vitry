@@ -18,56 +18,82 @@ FILE_NAME     = "out"
 
 
 
-
-header = "title Skikt"
-
-instruments = join "\n"
-            [ "part <id fl,   abbr Fl,        inst flute>"
-            , "part <id ob,   abbr Ob,        inst oboe>"
-            , "part <id cl,   abbr Kl,        inst bflat-clarinet>"
-            , "part <id bsn,  abbr Fag,       inst bassoon>"
-
-            , "part <id hrn,  abbr Hrn,       inst horn>"
-            , "part <id tpt,  abbr Tpt,       inst bflat-trumpet>"
-            , "part <id tbn,  abbr Tbn,       inst tenor-trombone>"
-
-            , "part <id pno,  abbr Pno,       inst piano>"
-
-            , "part <id vb,   abbr Vib,       inst vibraphone>"
-            , "part <id crot, abbr Crot,      inst vibraphone, name Crotales>"
-            , "inst <id perc1, template percussion, percinsts (snare-drum bass-drum)>"
-            , "part <id perc, abbr Perc       inst perc1>"
-
-            , "part <id vl1,  abbr \"Vl I\",  inst violin>"
-            , "part <id vl2,  abbr \"Vl II\", inst violin>"
-            , "part <id vla,  abbr Vla,       inst viola>"
-            , "part <id vc,   abbr Vc,        inst cello, name Violoncello>"
-            , "part <id db,   abbr Kb,        inst bass>" ]
+info  = [ ("title", "Skikt") ]
+    
+parts = [ ("fl",   "flute",             [ ("abbr", "Fl") ])
+        , ("ob",   "oboe",              [ ("abbr", "Ob") ])
+        , ("cl",   "bflat-clarinet",    [ ("abbr", "Kl") ])
+        , ("bsn",  "bassoon",           [ ("abbr", "Fag") ])
+        
+        , ("hrn",  "horn",              [ ("abbr", "Hrn") ])
+        , ("tpt",  "bflat-trumpet",     [ ("abbr", "Tpt") ])
+        , ("tbn",  "tenor-trombone",    [ ("abbr", "Tbn") ])
+        , ("pno",  "piano",             [ ("abbr", "Pno") ])
+        , ("vib",  "vibraphone",        [ ("abbr", "Vib") ])
+        , ("crot", "vibraphone",        [ ("abbr", "Crot")
+                                        , ("name", "Crotales") ])
+        ; , ("perc1", [("abbr", "Fl")])
+        
+        , ("vl1",  "violin",            [ ("abbr", "Vl I") ])
+        , ("vl2",  "violin",            [ ("abbr", "Vl II") ])
+        , ("vla",  "viola",             [ ("abbr", "Vla") ])
+        , ("vc",   "cello",             [ ("abbr", "Vc")
+                                        , ("name", "Violoncello") ])   
+        , ("db",   "bass",              [ ("abbr", "Kb") ])]
 
 
 
-tptPart =   join "\n" [ "time + dur 8/5 pitch 60;"
-            , "time + pitch 67 [>] [.];"
-            , "time + pitch 62 [!];"
-            , "time + pitch 58 [sfz];" ]
+; header = "title Skikt"
+;
+; instruments = join "\n"
+;             [ "part <id fl,   abbr Fl,        inst flute>"
+;             , "part <id ob,   abbr Ob,        inst oboe>"
+;             , "part <id cl,   abbr Kl,        inst bflat-clarinet>"
+;             , "part <id bsn,  abbr Fag,       inst bassoon>"
+; 
+;             , "part <id hrn,  abbr Hrn,       inst horn>"
+;             , "part <id tpt,  abbr Tpt,       inst bflat-trumpet>"
+;             , "part <id tbn,  abbr Tbn,       inst tenor-trombone>"
+; 
+;             , "part <id pno,  abbr Pno,       inst piano>"
+; 
+;             , "part <id vb,   abbr Vib,       inst vibraphone>"
+;             , "part <id crot, abbr Crot,      inst vibraphone, name Crotales>"
+;             , "inst <id perc1, template percussion, percinsts (snare-drum bass-drum)>"
+;             , "part <id perc, abbr Perc       inst perc1>"
+; 
+;             , "part <id vl1,  abbr \"Vl I\",  inst violin>"
+;             , "part <id vl2,  abbr \"Vl II\", inst violin>"
+;             , "part <id vla,  abbr Vla,       inst viola>"
+;             , "part <id vc,   abbr Vc,        inst cello, name Violoncello>"
+;             , "part <id db,   abbr Kb,        inst bass>" ]
+; 
+; 
+; 
+; tptPart =   join "\n" [ "time + dur 8/5 pitch 60;"
+;             , "time + pitch 67 [>] [.];"
+;             , "time + pitch 62 [!];"
+;             , "time + pitch 58 [sfz];" ]
+; 
+; 
+; events =  "\n"
+;        ++ "part tpt\n"
+;        ++ tptPart
+;        ++ "\n"
+;        ++ "part db clef bass\n"
+;        ++ "time + pitch 38[>];"
+; 
+; events2 = join "\n" (take 15 (loop events))
+; 
+; output = header ++ "\n\n" ++ instruments ++ "\n\n" ++ events2  
 
 
-events =  "\n"
-       ++ "part tpt\n"
-       ++ tptPart
-       ++ "\n"
-       ++ "part db clef bass\n"
-       ++ "time + pitch 38[>];"
-
-events2 = join "\n" (take 15 (loop events))
-
-output = header ++ "\n\n" ++ instruments ++ "\n\n" ++ events2
 
 
-
-
-
-
+main _ = do
+    text = fomus ([], parts, info)
+    print text
+    export text
 
 
 
@@ -88,26 +114,31 @@ output = header ++ "\n\n" ++ instruments ++ "\n\n" ++ events2
 ; text on a format understood by FOMUS, which may be written to
 ; a fms file.
 
-
+; Basic values
 time    = prec
 dur     = prec
 grace   = prec
 pitch   = prec
-part    = int
-voice   = int
 dynamic = float
+voice   = int
+ident   = str
+
+; Mapping from string to value (this is used a lot)
+setting  = (str, (str | num | [str] | [num]))
 
 
-; Mapping from string to value
-; May be included in most definitions
-
-setting = (str, (str | num | [str] | [num]))
+; Containers
+template = str
+perc     = (template, [setting])
+clef     = [setting]
+staff    = ([clef], [setting])
+inst     = ident | (template, [perc], [staff], [setting])
+part     = (ident, inst, [setting])
+; metapart = ([part, metapart], [setting]) TODO
 
 ; Marks can be represented by a single string (same as in FOMUS files)
 ; or as a tuple, containing arguments. We define some common cases as
 ; symbols as well.
-
-; For a througout description, see the FOMUS documentation
 
 markId  = "(.." | "*" | "+" | "-" | "."
         | ".((." | ".(." | "..)" | "..))"
@@ -184,12 +215,7 @@ markId  = "(.." | "*" | "+" | "-" | "."
         | (`-) | (`.) | (`!) | (`+)
         | `f | `ff | `fff | `ffff
         | `mp | `mf
-        | `p | `pp | `ppp | `pppp
-
-mark    = markId
-        | ( markId, num )
-        | ( markId, str )
-        | ( markId, num, str )
+        | `p | `pp | `ppp | `pppp 
 
 fff     = `fff
 ff      = `ff
@@ -200,7 +226,11 @@ p       = `p
 pp      = `pp
 ppp     = `ppp
 
-; Events are sparse structures
+mark    = markId
+        | ( markId, num )
+        | ( markId, str )
+        | ( markId, num, str )
+        
 ; TODO sticky values:
 ;       time, duration, pitch, part, voice, dynamic, grace
 
@@ -223,16 +253,11 @@ rest    = ( time, dur, grace, voice, part, [mark], [setting] )
 ; explicit downbeats/time signature changes and so on.
 
 measdef = ( time, dur, [setting] )
-
-event   = note | rest | measdef
-
-; instrument = ...
-; part = (instrument, [event], [setting])
-; score = ([part], [setting])
-
-; metapart = ...
-; staff = ([clef], [setting])
-
+event   = note 
+        | rest 
+        | measdef
+score   =  ([event], [part], [setting])
+        |  ([], [part], [setting])
 
 
 ; Returns a string representation of the given FOMUS data,
@@ -240,26 +265,36 @@ event   = note | rest | measdef
 
 ; score -> str
 fomus data = match data
-    ; score =
-    ; part =
-    ; metapart =
-    ; partmap =
-    ; inst =
-    ; measure
-    [ _ : event ] = 1
+    (name, value) : setting = fomus name ++ " " ++ fomus (unescape value)
+    (ident, inst, settings) : part = "part <" 
+        ++ "id "   ++ ident 
+        ++ " " ++ "inst " ++ fomus inst 
+        ++ " " ++ fomus settings 
+        ++ ">"
+    (events, parts, settings) : score = join "\n\n"
+        [fomus settings, fomus parts, fomus events]
+    settings : [setting]    = join " " (map fomus settings)
+    parts    : [part]       = join "\n" (map fomus parts)
+    x : num                 = x
+    x : str                 = x
+    x : ()                  = ""
 
 
 
+; Util
+unescape x = match x
+    x : str = "\"" ++ x ++ "\""
+    x : num = x
 
 ; Output
 
 fmsFile = FILE_LOCATION ++ FILE_NAME ++ ".fms"
 xmlFile = FILE_LOCATION ++ FILE_NAME ++ ".xml"
 
-; Writes the contents of output to a score and displays it
+; Writes the given text to a file and displays it
 ; () -> ()
-export _ = do
-    writeFile fmsFile output
+export text = do
+    writeFile fmsFile text
     run [ "fomus", fmsFile, "-o", xmlFile ]
 
     ; Workaround issue with FOMUS and clefs
