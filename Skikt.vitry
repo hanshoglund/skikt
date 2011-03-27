@@ -16,31 +16,28 @@ FILE_NAME     = "out"
 
 
 
-
-
-info  = [ ("title", "Skikt") ]
+info  = [ ("title", "Skikt")
+        , ("author", "HH 2011") ]
     
-parts = [ ("fl",   "flute",             [ ("abbr", "Fl") ])
+winds = [ ("fl",   "flute",             [ ("abbr", "Fl") ])
         , ("ob",   "oboe",              [ ("abbr", "Ob") ])
         , ("cl",   "bflat-clarinet",    [ ("abbr", "Kl") ])
-        , ("bsn",  "bassoon",           [ ("abbr", "Fag") ])
-        
-        , ("hrn",  "horn",              [ ("abbr", "Hrn") ])
+        , ("bsn",  "bassoon",           [ ("abbr", "Fag") ]) ]
+brass = [ ("hrn",  "horn",              [ ("abbr", "Hrn") ])
         , ("tpt",  "bflat-trumpet",     [ ("abbr", "Tpt") ])
-        , ("tbn",  "tenor-trombone",    [ ("abbr", "Tbn") ])
-        , ("pno",  "piano",             [ ("abbr", "Pno") ])
+        , ("tbn",  "tenor-trombone",    [ ("abbr", "Tbn") ]) ]
+percs = [ ("pno",  "piano",             [ ("abbr", "Pno") ])
         , ("vib",  "vibraphone",        [ ("abbr", "Vib") ])
         , ("crot", "vibraphone",        [ ("abbr", "Crot")
-                                        , ("name", "Crotales") ])
-        ; , ("perc1", [("abbr", "Fl")])
-        
-        , ("vl1",  "violin",            [ ("abbr", "Vl I") ])
+                                        , ("name", "Crotales") ]) ]        
+strs    = [ ("vl1",  "violin",            [ ("abbr", "Vl I") ])
         , ("vl2",  "violin",            [ ("abbr", "Vl II") ])
         , ("vla",  "viola",             [ ("abbr", "Vla") ])
         , ("vc",   "cello",             [ ("abbr", "Vc")
                                         , ("name", "Violoncello") ])   
-        , ("db",   "bass",              [ ("abbr", "Kb") ])]
+        , ("db",   "bass",              [ ("abbr", "Kb") ]) ]
 
+parts = winds ++ brass ++ percs ++ strs
 
 
 ; header = "title Skikt"
@@ -95,6 +92,7 @@ main _ = do
     print text
     export text
 
+test _ = fomus ([], parts, info)
 
 
 
@@ -103,7 +101,7 @@ main _ = do
 
 
 
-; ============================================================
+; =============================================================================
 ; FOMUS
 
 ; Interface to the FOMUS notation engine by David Psenicka
@@ -139,7 +137,6 @@ part     = (ident, inst, [setting])
 ; Marks can be represented by a single string (same as in FOMUS files)
 ; or as a tuple, containing arguments. We define some common cases as
 ; symbols as well.
-
 markId  = "(.." | "*" | "+" | "-" | "."
         | ".((." | ".(." | "..)" | "..))"
         | "..<" | "..>" | "."
@@ -231,9 +228,7 @@ mark    = markId
         | ( markId, str )
         | ( markId, num, str )
         
-; TODO sticky values:
-;       time, duration, pitch, part, voice, dynamic, grace
-
+; TODO sticky values: time, duration, pitch, part, voice, dynamic, grace
 note    = ( time, dur, grace, voice, part, pitch, dynamic, [mark], [setting] )
         | ( time, dur, grace, voice, part, pitch, dynamic, [mark] )
         | ( time, dur, grace, voice, part, pitch, dynamic )
@@ -243,7 +238,6 @@ note    = ( time, dur, grace, voice, part, pitch, dynamic, [mark], [setting] )
 ; FOMUS creates rests implicitly, the following form is only
 ; useful if you want to define marks or settings apart from
 ; a particular note event.
-
 rest    = ( time, dur, grace, voice, part, [mark], [setting] )
         | ( time, dur, grace, voice, part, [mark] )
         | ( time, dur, grace, voice, part, [setting] )
@@ -251,53 +245,68 @@ rest    = ( time, dur, grace, voice, part, [mark], [setting] )
 
 ; The same goes for measures. Measdefs are just to create
 ; explicit downbeats/time signature changes and so on.
-
 measdef = ( time, dur, [setting] )
+
 event   = note 
         | rest 
         | measdef
 score   =  ([event], [part], [setting])
         |  ([], [part], [setting])
 
+; =============================================================================
 
-; Returns a string representation of the given FOMUS data,
-; in the FOMUS native file format.
+; Returns a string representation of the given FOMUS data.
 
-; score -> str
 fomus data = match data
-    (name, value) : setting = fomus name ++ " " ++ fomus (unescape value)
-    (ident, inst, settings) : part = "part <" 
-        ++ "id "   ++ ident 
-        ++ " " ++ "inst " ++ fomus inst 
-        ++ " " ++ fomus settings 
-        ++ ">"
-    (events, parts, settings) : score = join "\n\n"
-        [fomus settings, fomus parts, fomus events]
+                      
+    ; TODO perc
+    ; TODO clef
+    ; TODO staff
+    ; TODO inst
+    ; TODO mark
+    ; TODO note
+    ; TODO rest
+    ; TODO measdef
+    (name, value)            : setting = fomus name ++ " " ++ fomus (unescape value)
+    (id, inst, settings)  : part    = "part <"
+                                           ++ "id "   ++ id 
+                                    ++ " " ++ "inst " ++ fomus inst 
+                                    ++ " " ++ fomus settings 
+                                    ++ ">"    
+    (events, parts, settings) : score  = join "\n\n" [fomus settings, fomus parts, fomus events]
+    
     settings : [setting]    = join " " (map fomus settings)
     parts    : [part]       = join "\n" (map fomus parts)
+    
     x : num                 = x
     x : str                 = x
     x : ()                  = ""
 
 
-
+; =============================================================================
 ; Util
+
 unescape x = match x
     x : str = "\"" ++ x ++ "\""
     x : num = x
 
+
+
+; =============================================================================
 ; Output
 
 fmsFile = FILE_LOCATION ++ FILE_NAME ++ ".fms"
 xmlFile = FILE_LOCATION ++ FILE_NAME ++ ".xml"
 
+
 ; Writes the given text to a file and displays it
-; () -> ()
+
 export text = do
+    
     writeFile fmsFile text
     run [ "fomus", fmsFile, "-o", xmlFile ]
 
-    ; Workaround issue with FOMUS and clefs
+    ; Work around issue with FOMUS and clefs
     print "adjusting fomus clefs..."
     replaceFile xmlFile
         [ "<sign>F</sign>", "<sign>C</sign>" ]
