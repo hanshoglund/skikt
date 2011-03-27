@@ -17,7 +17,7 @@ FILE_NAME     = "out"
 
 
 info  = [ ("title", "Skikt")
-        , ("author", "HH 2011") ]
+        , ("author", "Hans Hoglund 2011") ]
     
 insts = [ ("perc1", "percussion", ["snare-drum", "bass-drum"]) ]
 
@@ -74,7 +74,7 @@ test _ = fomus ([], decls, info)
 
 ; Basic values
 time    = prec
-dur     = prec
+dur     = prec | "+" | (`+)
 grace   = prec
 pitch   = prec
 dynamic = float
@@ -178,6 +178,8 @@ markId  = "(.." | "*" | "+" | "-" | "."
         | `mp | `mf
         | `p | `pp | `ppp | `pppp 
 
+mark    = markId | ( markId, num ) | ( markId, str ) | ( markId, num, str )
+
 fff     = `fff
 ff      = `ff
 f       = `f
@@ -187,34 +189,22 @@ p       = `p
 pp      = `pp
 ppp     = `ppp
 
-mark    = markId
-        | ( markId, num )
-        | ( markId, str )
-        | ( markId, num, str )
-        
-; TODO sticky values: time, duration, pitch, part, voice, dynamic, grace
-note    = ( time, dur, grace, voice, part, pitch, dynamic, [mark], [setting] )
-        | ( time, dur, grace, voice, part, pitch, dynamic, [mark] )
-        | ( time, dur, grace, voice, part, pitch, dynamic )
-        | ( time, dur, grace, voice, part, pitch, [mark] )
-        | ( time, dur, grace, voice, part, pitch )
+note    = (time, dur, grace, voice, part, pitch, dynamic, [mark], [setting] )
+rest    = (time, dur, grace, voice, part, [mark], [setting] )
 
-; FOMUS creates rests implicitly, the following form is only
-; useful if you want to define marks or settings apart from
-; a particular note event.
-rest    = ( time, dur, grace, voice, part, [mark], [setting] )
-        | ( time, dur, grace, voice, part, [mark] )
-        | ( time, dur, grace, voice, part, [setting] )
-        | ( time, dur, grace, voice, part )
-
-; The same goes for measures. Measdefs are just to create
-; explicit downbeats/time signature changes and so on.
-measdef = ( time, dur, [setting] )
+measdef = (time, dur, [setting] )
+        | (time, dur, [] )
 
 event   = note | rest | measdef
 decl    = part | inst | perc | clef | staff
-score   =  ([event], [decl], [setting])
-        |  ([], [decl], [setting])
+
+score   = ([event], [decl], [setting])
+        | ([], [decl], [setting])
+        | ([event], [], [setting])
+        | ([event], [decl])
+        | ([], [decl])
+        | ([event], [])
+        | ([], [], [setting])
 
 ; =============================================================================
 
@@ -227,7 +217,7 @@ fomus data = match data
     ; TODO staff
     (id, templ, percs)        : inst = "inst <"
                                            ++ "id " ++ id
-                                    ++ " " ++ "template " ++ fomus templ 
+                                    ++ " " ++ "template "  ++ fomus templ 
                                     ++ " " ++ "percinsts " ++ fomusList percs
                                     ++ ">"
     (id, arg1, arg2)          : mark = "[" ++ (string id) ++ " " ++ (unescape arg1) ++ " " ++ (unescape arg2) ++ "]"
@@ -235,7 +225,10 @@ fomus data = match data
     id                        : mark = "[" ++ (string id) ++ "]"
     ; TODO note
     ; TODO rest
-    ; TODO measdef
+    (time, dur, settings)     : measdef = "time " ++ string time 
+                                    ++ " " ++ "dur " ++ string dur
+                                    ++ " measure <" ++ fomus settings ++ ">"    
+                                    ; ++ " |" ++ fomus settings ++ "|"
     (name, value)             : setting = fomus name ++ " " ++ fomus (unescape value)
     (id, inst, settings)      : part    = "part <"
                                            ++ "id "   ++ id 
@@ -247,15 +240,11 @@ fomus data = match data
     event    : [event]      = join "\n" (map fomus event)
     decls    : [decl]       = join "\n" (map fomus decls)
     settings : [setting]    = join " " (map fomus settings)
-    x : num                 = x
+    x : num                 = string x
     x : str                 = x
     x : ()                  = ""
 
 fomusList xs = "(" ++ join " " (map fomus xs) ++ ")"
-
-
-; =============================================================================
-; Util
 
 unescape x = match x
     x : str = "\"" ++ x ++ "\""
@@ -268,6 +257,7 @@ unescape x = match x
 
 fmsFile = FILE_LOCATION ++ FILE_NAME ++ ".fms"
 xmlFile = FILE_LOCATION ++ FILE_NAME ++ ".xml"
+lyFile  = FILE_LOCATION ++ FILE_NAME ++ ".ly"
 
 
 ; Writes the given text to a file and displays it
@@ -276,6 +266,7 @@ export text = do
     
     writeFile fmsFile text
     run [ "fomus", fmsFile, "-o", xmlFile ]
+    ; run [ "fomus", fmsFile, "-o", lyFile ]
 
     ; Work around issue with FOMUS and clefs
     print "adjusting fomus clefs..."
