@@ -47,6 +47,21 @@ decls = insts ++ parts
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 main _ = do
     text = fomus ([], decls, info)
     print text
@@ -81,27 +96,25 @@ dynamic = float
 voice   = int
 ident   = str
 
-; Mapping from string to value (this is used a lot)
-setting  = (str, (str | num | [str] | [num]))
+setting = (str, (str | num | [str] | [num]))
 
-
-; Containers
-templ    = ident
-perc     = templ 
-         | (ident, [setting])
-clef     = [setting]
-staff    = ([clef], [setting])
-inst     = templ
-         | (ident, templ, [perc])
-         | (ident, templ, [perc], [staff])
-         | (ident, templ, [perc], [staff], [setting])
-part     = (ident, inst, [setting])
+templ   = ident
+clef    = [setting]
+staff   = ([clef], [setting])
+perc    = templ 
+        | (ident, [setting])
+inst    = templ
+        | (ident, templ, [perc])
+        | (ident, templ, [perc], [staff])
+        | (ident, templ, [perc], [staff], [setting])
+part    = (ident, inst, [setting])
 ; metapart = ([part, metapart], [setting]) TODO
 
 ; Marks can be represented by a single string (same as in FOMUS files)
 ; or as a tuple, containing arguments. We define some common cases as
 ; symbols as well.
-markId  = "(.." | "*" | "+" | "-" | "."
+
+sign    = "(.." | "*" | "+" | "-" | "."
         | ".((." | ".(." | "..)" | "..))"
         | "..<" | "..>" | "."
         | "dash)" | "..dash))"
@@ -177,9 +190,10 @@ markId  = "(.." | "*" | "+" | "-" | "."
         | `f | `ff | `fff | `ffff
         | `mp | `mf
         | `p | `pp | `ppp | `pppp 
-
-mark    = markId | ( markId, num ) | ( markId, str ) | ( markId, num, str )
-
+mark    = sign 
+        | (sign, num) 
+        | (sign, str) 
+        | (sign, num, str)
 fff     = `fff
 ff      = `ff
 f       = `f
@@ -189,8 +203,8 @@ p       = `p
 pp      = `pp
 ppp     = `ppp
 
-note    = (time, dur, grace, voice, part, pitch, dynamic, [mark], [setting] )
-rest    = (time, dur, grace, voice, part, [mark], [setting] )
+note    = (part, voice, time, grace, dur, pitch, dynamic, [mark], [setting] )
+rest    = (part, voice, time, grace, dur, [mark], [setting] )
 
 measdef = (time, dur, [setting] )
         | (time, dur, [] )
@@ -211,44 +225,47 @@ score   = ([event], [decl], [setting])
 ; Returns a string representation of the given FOMUS data.
 
 fomus data = match data
+    
+    (name, value)             : setting = fomus name ++ " " ++ fomus value
                       
     ; TODO perc
     ; TODO clef
     ; TODO staff
+    
     (id, templ, percs)        : inst = "inst <"
                                            ++ "id " ++ id
                                     ++ " " ++ "template "  ++ fomus templ 
                                     ++ " " ++ "percinsts " ++ fomusList percs
                                     ++ ">"
-    (id, arg1, arg2)          : mark = "[" ++ (string id) ++ " " ++ (unescape arg1) ++ " " ++ (unescape arg2) ++ "]"
-    (id, arg)                 : mark = "[" ++ (string id) ++ " " ++ (unescape arg) ++ "]"
-    id                        : mark = "[" ++ (string id) ++ "]"
-    ; TODO note
-    ; TODO rest
-    (time, dur, settings)     : measdef = "time " ++ string time 
-                                    ++ " " ++ "dur " ++ string dur
-                                    ++ " measure <" ++ fomus settings ++ ">"    
-                                    ; ++ " |" ++ fomus settings ++ "|"
-    (name, value)             : setting = fomus name ++ " " ++ fomus (unescape value)
-    (id, inst, settings)      : part    = "part <"
+    (id, inst, settings)      : part = "part <"
                                            ++ "id "   ++ id 
                                     ++ " " ++ "inst " ++ fomus inst 
                                     ++ " " ++ fomus settings 
-                                    ++ ">"    
+                                    ++ ">"
+    (id, arg1, arg2)          : mark = "[" ++ (string id) ++ " " ++ (fomus arg1) ++ " " ++ (fomus arg2) ++ "]"
+    (id, arg)                 : mark = "[" ++ (string id) ++ " " ++ (fomus arg) ++ "]"
+    id                        : mark = "[" ++ (string id) ++ "]"
+    
+    ; TODO note
+    ; TODO rest
+    
+    (time, dur, settings)     : measdef = "time " ++ string time 
+                                    ++ " " ++ "dur " ++ string dur
+                                    ++ " " ++ "measure <" ++ fomus settings ++ ">"    
+    
     (events, decls, settings) : score  = join "\n\n" [fomus settings, fomus decls, fomus events]
     
     event    : [event]      = join "\n" (map fomus event)
     decls    : [decl]       = join "\n" (map fomus decls)
     settings : [setting]    = join " " (map fomus settings)
+    xs : [ _ ]              = fomusList xs
     x : num                 = string x
-    x : str                 = x
+    x : str                 = unescape x
     x : ()                  = ""
 
 fomusList xs = "(" ++ join " " (map fomus xs) ++ ")"
 
-unescape x = match x
-    x : str = "\"" ++ x ++ "\""
-    x : num = string x
+unescape x = "\"" ++ x ++ "\""
 
 
 
