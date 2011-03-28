@@ -8,6 +8,8 @@
 
 module Hans.Music.Skikt
 
+; Setup
+
 scoreEditor = "/Applications/Sibelius 6.app"
 fileDir     = "/Users/hans/Documents/Musik/Skikt/output/"
 fileName    = "out"
@@ -17,7 +19,10 @@ fixClefs    = false
 info  = [ ("title",  "Skikt")
         , ("author", "Hans Hoglund 2011") ]
 
-insts = [ ("perc1", "percussion", ["snare-drum", "bass-drum", "splash-cymbal"]) ]
+
+; Parts
+
+insts = [ ("perc1", "percussion", ["snare-drum", "bass-drum", "crash-cymbal", "splash-cymbal"]) ]
 
 winds = [ ("fl",   "flute",             [ ("abbr", "Fl.") ])
         , ("ob",   "oboe",              [ ("abbr", "Ob.") ])
@@ -39,38 +44,48 @@ strs  = [ ("vl1",  "violin",          [ ("abbr", "Vl. I") ])
                                         , ("name", "Violoncello") ])
         , ("db",   "bass",              [ ("abbr", "Kb.") ]) ]
 
+fl = index 0 winds
+cl = index 2 winds
+
 parts = winds ++ brass ++ percs ++ strs
 decls = insts ++ parts
 
-
 snareDrum = `snareDrum
 bassDrum  = `bassDrum
+smallCymbal = `smallCymbal 
+largeCymbal = `largeCymbal
+
 percNote inst = match inst
-    x : snareDrum = 72
-    x : bassDrum  = 65
+    x : bassDrum    = 65
+    x : snareDrum   = 72
+    x : smallCymbal = 76
+    x : largeCymbal = 79
+
+
+; Events
 
 
 
 
 
 
+durs = (loop 1)
+pitches = (loop (percNote largeCymbal))
+dyns = (loop 1.0)
+
+
+
+events = take 20 
+    zip5 durs pitches dyns (loop []) (loop [])
 
 
 
 
 
-
-
-
-events = []
-
-
-
+; Main program
 
 main _ = (export . fomus) (events, decls, info)
 test _ = fomus (events, decls, info)
-
-
 
 
 
@@ -168,17 +183,29 @@ expandEvent e : event = match e
     ( t, d, ms, ss )                 : rest    = ( (), (), t,  (), d,  ms, ss )
     ( d, ss )                        : measure = ( (), d, ss )
 
-;   note -> pitch | nil
-getPitch n = match n
-    ( _, _, _, _, _, p, _, _, _ ) : note = p
-    n                             : note = (getPitch . expandEvent) n
+getNDur   ( _, _, _, _, d, _, _, _, _ ) = d
+getNPitch ( _, _, _, _, _, p, _, _, _ ) = p
+getNDyn   ( _, _, _, _, _, _, n, _, _ ) = n
+getRDur   ( _, _, _, _, d, _, _ )       = d
+getMDur   ( d, _ )                      = d
+setNPart  r ( _, v, t, g, d, p, n, ms, ss ) = (r, v, t, g, d, p, n, ms, ss)
+setNVoice v ( r, _, t, g, d, p, n, ms, ss ) = (r, v, t, g, d, p, n, ms, ss)
+setNTime  t ( r, v, _, g, d, p, n, ms, ss ) = (r, v, t, g, d, p, n, ms, ss)
+setNGrace g ( r, v, t, _, d, p, n, ms, ss ) = (r, v, t, g, d, p, n, ms, ss)
+setNDur   d ( r, v, t, g, _, p, n, ms, ss ) = (r, v, t, g, d, p, n, ms, ss)
+setNPitch p ( r, v, t, g, d, _, n, ms, ss ) = (r, v, t, g, d, p, n, ms, ss)
+setNDyn   n ( r, v, t, g, d, p, _, ms, ss ) = (r, v, t, g, d, p, n, ms, ss)
+setNMarks n ( r, v, t, g, d, p, n, _,  ss ) = (r, v, t, g, d, p, n, ms, ss)
 
-;   event -> dur | ()
-getDur n = match n
-    ( _, _, _, _, d, _, _, _, _) : note    = d
-    ( _, _, _, _, d, _, _)       : rest    = d
-    ( d, _)                      : measure = d
-    n                            : event   = (getDur . expandEvent) n
+;   event -> dur
+getDur e = match (expandEvent e)
+    e : note    = getNDur e
+    e : rest    = getRDur e
+    e : measure = getMDur e
+
+;   note -> pitch
+getPitch = getNPitch . expandEvent
+getDyn   = getNDyn . expandEvent
 
 ;   part -> id
 getId (id, _, _) : part = id
