@@ -32,7 +32,7 @@ percs = [ ("pno",  "piano",             [ ("abbr", "Pno.") ])
                                         , ("name", "Crotales") ])
         , ("perc", "perc1",             [ ("abbr", "Perc.")
                                         , ("name", "Percussion")]) ]
-strs    = [ ("vl1",  "violin",          [ ("abbr", "Vl. I") ])
+strs  = [ ("vl1",  "violin",          [ ("abbr", "Vl. I") ])
         , ("vl2",  "violin",            [ ("abbr", "Vl. II") ])
         , ("vla",  "viola",             [ ("abbr", "Vla.") ])
         , ("vc",   "cello",             [ ("abbr", "Vc.")
@@ -125,7 +125,7 @@ grace      = prec   | nil | "+"
 dur        = prec   | nil | "+" | "-"
 pitch      = prec   | nil
 dyn        = double | nil
-voice      = int    | nil
+voice      = int    | nil | [int]
 
 identifier = str
 setting    = (str, (str | num | [str] | [num]))
@@ -165,9 +165,8 @@ inst    = template
 part    = nil | (identifier, inst, [setting])
 
 mark    = markSign
-        | ( markSign, num )
-        | ( markSign, str )
-        | ( markSign, num, str )
+        | ( markSign, (num | str) )
+        | ( markSign, (num | str), (num | str) )
 
 ; We define some sparse forms of the events for convenience
 
@@ -190,7 +189,8 @@ score   = ( [event], [decl], [setting] )
 
 ; Utils
 
-; event -> event
+; Expands a sparse event to its complete form, substituting nil for all missing slots 
+;   event -> event
 expandEvent e : event = match e
     ( r, v, t, d, p, n:dyn, ms, ss ) : note    = ( r,  v,  t,  (), d,  p, n, ms, ss )
     ( t, d, p, n:dyn, ms, ss )       : note    = ( (), (), t,  (), d,  p, n, ms, ss )
@@ -199,34 +199,49 @@ expandEvent e : event = match e
     ( t, d, ms, ss )                 : rest    = ( (), (), t,  (), d,  ms, ss )
     ( d, ss )                        : measure = ( (), d, ss )
 
-;  note -> pitch | nil
+;   note -> pitch | nil
 getPitch n = match n
     ( _, _, _, _, _, p, _, _, _ ) : note = p
     n                             : note = (getPitch . expandEvent) n
 
-; event -> dur | ()
+;   event -> dur | ()
 getDur n = match n
     ( _, _, _, _, d, _, _, _, _) : note    = d
     ( _, _, _, _, d, _, _)       : rest    = d
     ( d, _)                      : measure = d
     n                            : event   = (getDur . expandEvent) n
 
-; part -> id
+;   part -> id
 getId (id, _, _) : part = id
+
+
+; Simple inspectors for the repl
     
+declType d = match d
+    d : part    = `part
+    d : inst    = `inst
+    d : perc    = `perc
+    d : staff   = `staff
+    d : clef    = `clef
+
+eventType e = match e
+    e : note    = `note
+    e : rest    = `rest
+    e : measure = `measure
+
 
 
 ; Export
 
 ; Returns a string representation of the given FOMUS data.
-;     mark | decl | event | setting | [mark] | [decl] | [event] | [setting] | score -> str
+;    ( mark  |  decl  |  event  | setting | [mark] | [decl] | [event] | [setting] | score ) -> str
 fomus data = match data
 
     (id, x, y)                : mark = "[" ++ string id ++ " " ++ fomus x ++ " " ++ fomus y ++ "]"
     (id, x)                   : mark = "[" ++ string id ++ " " ++ fomus x ++ "]"
     id                        : mark = "[" ++ string id ++ "]"
     
-    (name, value)             : setting = name ++ " " ++ fomus value
+    (name, value)             : setting = name ++ "=" ++ fomus value
 
     (id, template, percs)     : inst = "inst <"
                                     ++ "id="        ++ id              ++ " " 
