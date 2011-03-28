@@ -3,7 +3,7 @@
 ; =============================================================================
 ; Skikt
 ; Hans Hoglund (2011)
-; Vitry v0.1.x
+; Vitry v0.1.2
 ; =============================================================================
 
 module Hans.Music.Skikt
@@ -18,8 +18,10 @@ PREVIEW       = false
 
 info  = [ ("title",  "Skikt")
         , ("author", "Hans Hoglund 2011") ]
-    
-insts = [ ("perc1", "percussion", ["snare-drum", "bass-drum"]) ]
+
+; notes : 38, 35    
+insts = [ ("perc1", "percussion", ["snare-drum2", "bass-drum2"]) ]
+
 
 winds = [ ("fl",   "flute",             [ ("abbr", "Fl.") ])
         , ("ob",   "oboe",              [ ("abbr", "Ob.") ])
@@ -32,7 +34,8 @@ percs = [ ("pno",  "piano",             [ ("abbr", "Pno.") ])
         , ("vib",  "vibraphone",        [ ("abbr", "Vib.") ])
         , ("crot", "vibraphone",        [ ("abbr", "Crot.")
                                         , ("name", "Crotales") ])        
-        , ("perc", "perc1",             [ ("abbr", "Perc.") ]) ]
+        , ("perc", "perc1",             [ ("abbr", "Perc.") 
+                                        , ("name", "Percussion")]) ]
 strs    = [ ("vl1",  "violin",          [ ("abbr", "Vl. I") ])
         , ("vl2",  "violin",            [ ("abbr", "Vl. II") ])
         , ("vla",  "viola",             [ ("abbr", "Vla.") ])
@@ -40,23 +43,57 @@ strs    = [ ("vl1",  "violin",          [ ("abbr", "Vl. I") ])
                                         , ("name", "Violoncello") ])   
         , ("db",   "bass",              [ ("abbr", "Kb.") ]) ]
 
+snareDrum = `snareDrum
+bassDrum = `bassDrum
+percNote inst = match inst
+    x : snareDrum = 72
+    x : bassDrum  = 65
+
 parts = winds ++ brass ++ percs ++ strs
 ; parts = winds
 decls = insts ++ parts
-clarinet = index 3 parts
+myPart = index 3 percs
 
 
 
 randoms x = unroll (pluck random x)
 
 
-melody = zip3With (fn (t d p) (clarinet, 1, t, (), d, p, 1.0, [], []))
-notes = (melody (loop "+") (map (+ 1) (randoms 3)) (map (+ 40) (randoms 10))) 
-rests = (loop (clarinet, 1, "+", (), 1, [], []))
+melody part = zip3With (fn (time dur pitch) (part, 1, time, (), dur, pitch, (randomDouble ()), [], []))
+nothing part = map (fn (dur) (part, 1, "+", [], dur, [], []))
+
+notes = melody myPart (loop "+") (map (+ 1) (randoms 3)) (unroll (pluck pick [percNote snareDrum, percNote bassDrum]))
+rests = nothing myPart (loop ((11/3) * 5))
 
 
-events = take 300 (interl notes rests) 
+events = take 10 (interl notes rests) 
 ; events = take 30 notes
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
