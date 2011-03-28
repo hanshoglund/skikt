@@ -17,7 +17,7 @@ fixClefs    = false
 info  = [ ("title",  "Skikt")
         , ("author", "Hans Hoglund 2011") ]
 
-insts = [ ("perc1", "percussion", ["snare-drum2", "bass-drum2"]) ]
+insts = [ ("perc1", "percussion", ["snare-drum", "bass-drum", "splash-cymbal"]) ]
 
 winds = [ ("fl",   "flute",             [ ("abbr", "Fl.") ])
         , ("ob",   "oboe",              [ ("abbr", "Ob.") ])
@@ -55,18 +55,6 @@ percNote inst = match inst
 
 
 
-randoms x = unroll (pluck random x)
-
-melody part = zip3With (fn (time dur pitch) (part, 1, time, (), dur, pitch, (randomDouble ()), [("x_", "dolce")], []))
-nothing part = map (fn (dur) (part, 1, "+", [], dur, [], []))
-
-myPart = index 3 percs
-notes = melody myPart (loop "+") (map (+ 1) (randoms 4)) (unroll (pluck pick [percNote snareDrum, percNote bassDrum]))
-rests = nothing myPart (loop ((11/3) * 5))
-
-
-events = take 40 (interl notes rests)
-; events = take 30 notes
 
 
 
@@ -74,26 +62,7 @@ events = take 40 (interl notes rests)
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+events = []
 
 
 
@@ -297,6 +266,7 @@ maybeGrace x   = match x (x : () = "") (x = "grace="   ++ string x)
 maybeDur x     = match x (x : () = "") (x = "dur="     ++ string x)
 maybePitch x   = match x (x : () = "") (x = "pitch="   ++ string x)
 maybeDynamic x = match x (x : () = "") (x = "dynamic=" ++ string x)
+
 
 
 ; =============================================================================
