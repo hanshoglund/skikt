@@ -40,29 +40,23 @@ strs    = [ ("vl1",  "violin",          [ ("abbr", "Vl. I") ])
                                         , ("name", "Violoncello") ])   
         , ("db",   "bass",              [ ("abbr", "Kb.") ]) ]
 
-; parts = winds ++ brass ++ percs ++ strs
-parts = winds
+parts = winds ++ brass ++ percs ++ strs
+; parts = winds
 decls = insts ++ parts
+clarinet = index 3 parts
 
 
 
 randoms x = unroll (pluck random x)
 
 
+melody = zip3With (fn (t d p) (clarinet, 1, t, (), d, p, 1.0, [], []))
+notes = (melody (loop "+") (map (+ 1) (randoms 3)) (map (+ 40) (randoms 10))) 
+rests = (loop (clarinet, 1, "+", (), 1, [], []))
 
 
-; [time] -> [dur] -> [pitch] -> [event]
-melody = zip3With (fn (t d p) (t, d, p, [], []))
-
-events = take 300 (melody (cycle ["+", [], [], []]) (map (+ 1) (randoms 3)) (map (+ 40) (randoms 10))) 
-
-
-
-
-
-
-
-
+events = take 300 (interl notes rests) 
+; events = take 30 notes
 
 
 
@@ -256,7 +250,7 @@ time    = prec | "+" | ()
 grace   = prec | "+" | ()
 dur     = prec | "+" | "-"
 pitch   = prec
-dynamic = float
+dynamic = double
 voice   = int
 ident   = str
 
@@ -313,29 +307,50 @@ fomus data = match data
                                     ++ " " ++ "inst " ++ fomus inst 
                                     ++ " " ++ fomus settings 
                                     ++ ">"
+    
     (id, x, y)                : mark = "[" ++ string id ++ " " ++ fomus x ++ " " ++ fomus y ++ "]"
     (id, x)                   : mark = "[" ++ string id ++ " " ++ fomus x ++ "]"
     id                        : mark = "[" ++ string id ++ "]"
-    
+                                                            
+    (part, voice, time, grace, dur, pitch, dynamic, marks, settings) : note = "part " ++ (getId part)
+                                    ++ " " ++ "voice " ++ (string voice)
+                                    ++ " " ++ (match time (x : () = "") (x = ("time " ++ string time)))
+                                    ++ " " ++ (match grace (x : () = "") (x = ("grace " ++ string grace)))
+                                    ++ " " ++ "dur " ++ string dur
+                                    ++ " " ++ "pitch " ++ string pitch 
+                                    ++ " " ++ "dynamic " ++ string dynamic 
+                                    ++ " " ++ fomus marks 
+                                    ++ " " ++ fomus settings
+                                    ++ ";"
     (time, dur, pitch, marks, settings) : note = (match time (x : () = "") (x = ("time " ++ string time)))
                                     ++ " " ++ "dur " ++ string dur
-                                    ++ " " ++ "pitch " ++ fomus pitch 
+                                    ++ " " ++ "pitch " ++ string pitch 
                                     ++ " " ++ fomus marks 
                                     ++ " " ++ fomus settings
                                     ++ ";"
     (dur, pitch, marks, settings) : note = "dur " ++ string dur
-                                    ++ " " ++ "pitch " ++ fomus pitch 
+                                    ++ " " ++ "pitch " ++ string pitch 
                                     ++ " " ++ fomus marks 
                                     ++ " " ++ fomus settings
                                     ++ ";"
-    (pitch, marks, settings)  : note = "pitch " ++ fomus pitch 
+    (pitch, marks, settings)  : note = "pitch " ++ string pitch 
                                     ++ " " ++ fomus marks 
                                     ++ " " ++ fomus settings
-                                    ++ ";"
-    
+                                    ++ ";"                 
+    (part, voice, time, grace, dur, marks, settings) : rest = "rest "
+                                    ++ " " ++ "part " ++ (getId part)
+                                    ++ " " ++ "voice " ++ (string voice)
+                                    ++ " " ++ (match time (x : () = "") (x = ("time " ++ string time)))
+                                    ++ " " ++ (match grace (x : () = "") (x = ("grace " ++ string grace)))
+                                    ++ " " ++ "dur " ++ string dur
+                                    ++ " " ++ fomus marks 
+                                    ++ " " ++ fomus settings
+                                    ++ ";"  
     (time, dur, settings)     : measdef = "time " ++ fomus time 
                                     ++ " " ++ "dur " ++ fomus dur
                                     ++ " " ++ "measure <" ++ fomus settings ++ ">"    
+
+
     
     (events, decls, settings) : score  = join "\n\n" [fomus settings, fomus decls, fomus events]
     
@@ -350,7 +365,7 @@ fomus data = match data
 
 fomusList xs = "(" ++ join " " (map fomus xs) ++ ")"
 fomusStr x   = "\"" ++ x ++ "\""
-
+getId (id, _, _) : part = id
 
 
 
