@@ -117,16 +117,19 @@ test _ = fomus (events, decls, info)
 ; text on a format understood by FOMUS, which may be written to
 ; a fms file.
 
-; Data
+; Fomus allows many fields to be "unset", assuming the previous value
+; We represent this by nil
 
-time       = prec | "+" | ()
-grace      = prec | "+" | ()
-dur        = prec | "+" | "-" | ()
-pitch      = prec
-dyn        = double
-voice      = int
+time       = prec   | nil | "+"
+grace      = prec   | nil | "+"
+dur        = prec   | nil | "+" | "-"
+pitch      = prec   | nil
+dyn        = double | nil
+voice      = int    | nil
+
 identifier = str
 setting    = (str, (str | num | [str] | [num]))
+
 markSign   = "(.." | "*" | "+" | "-" | "." | ".((." | ".(." | "..)" | "..))" | "..<"
            | "..>" | "." | "dash)" | "..dash))" | "..dot)" | "..dot))" | "..grace)"
            | "..ped" | "..tup" | "..x!" | "..x^" | "..x_" | ".<." | ".>." | ".dash((."
@@ -146,81 +149,71 @@ markSign   = "(.." | "*" | "+" | "-" | "." | ".((." | ".(." | "..)" | "..))" | "
            | "slap" | "snap" | "snappizz" | "spic" | "sul" | "table" | "tall" | "tasto"
            | "tempo" | "trem" | "trem2" | "tup.." | "unmute" | "upbow" | "vib" | "x"
            | "x!" | "x!.." | "x^" | "x^.." | "x_" | "x_.." | "~" | (`-) | (`.) | (`!) | (`+)
-templ   = identifier
+
+template   = identifier
 
 clef    = [setting]
-staff   = ([clef], [setting])
+staff   = ( [clef], [setting] )
 
-perc    = templ
-        | (identifier, [setting])
-inst    = templ
-        | (identifier, templ, [perc])
-        | (identifier, templ, [perc], [staff])
-        | (identifier, templ, [perc], [staff], [setting])
+perc    = template
+        | ( identifier, [setting] )
+inst    = template
+        | ( identifier, template, [perc] )
+        | ( identifier, template, [perc], [staff] )
+        | ( identifier, template, [perc], [staff], [setting] )
 
-part    = (identifier, inst, [setting])
+part    = nil | (identifier, inst, [setting])
 
 mark    = markSign
-        | (markSign, num)
-        | (markSign, str)
-        | (markSign, num, str)
+        | ( markSign, num )
+        | ( markSign, str )
+        | ( markSign, num, str )
 
-note    = (part,  voice,  time,   grace,  dur,    pitch,  dyn,    [mark],  [setting])
-        | (part,  voice,  time,   dur,    pitch,  dyn,    [mark], [setting])
-        ; | (part,  voice,  time,   dur,    pitch,  [mark], [setting])              ; collides
-        | (time,  dur,    pitch,  dyn,    [mark], [setting])
-        | (dur,   pitch,  dyn,    [mark], [setting])
-        | (pitch, dyn,    [mark], [setting])
-        | (time,  dur,    pitch,  [mark], [setting])
-        | (dur,   pitch,  [mark], [setting])
-        ; | (pitch, [mark], [setting])
-rest    = (part,  voice,  time,   grace,  dur,    [mark], [setting])
-        | (part,  voice,  time,   dur,    [mark], [setting])
-        | (part,  voice,  dur,    [mark], [setting]) 
-        | (time,   grace,  dur,    [mark], [setting])
-        ; | (time,   dur,    [mark], [setting])
-        | (dur,    [mark], [setting])
-measdef = (time,  dur,    [setting])
-        | (dur,   [setting])
+; We define some sparse forms of the events for convenience
+
+note    = ( part,   voice,   time,    grace,   dur,     pitch,   dyn,     [mark],  [setting] )
+        | ( part,   voice,   time,    dur,     pitch,   dyn,     [mark],  [setting]          )
+        | ( time,   dur,     pitch,   dyn,     [mark],  [setting]                            )
+        | ( dur,    pitch,   dyn,     [mark],  [setting]                                     )
+        | ( pitch,  dyn,     [mark],  [setting]                                              )
+rest    = ( part,   voice,   time,    grace,   dur,     [mark],  [setting]                   )
+        | ( time,   dur,     [mark],  [setting]                                              )
+measure = ( time,   dur,     [setting]                                                       )
+        | ( dur,    [setting]                                                                )
 
 decl    = part | inst | perc | staff | clef
-event   = note | rest | measdef
+event   = note | rest | measure
 
-score   = ([event], [decl], [setting])
+score   = ( [event], [decl], [setting] )
+
 
 
 ; Utils
 
+; event -> event
+expandEvent e : event = match e
+    ( r, v, t, d, p, n:dyn, ms, ss ) : note    = ( r,  v,  t,  (), d,  p, n, ms, ss )
+    ( t, d, p, n:dyn, ms, ss )       : note    = ( (), (), t,  (), d,  p, n, ms, ss )
+    ( d, p, n:dyn, ms, ss )          : note    = ( (), (), (), (), d,  p, n, ms, ss )
+    ( p, n:dyn, ms, ss )             : note    = ( (), (), (), (), (), p, n, ms, ss )
+    ( t, d, ms, ss )                 : rest    = ( (), (), t,  (), d,  ms, ss )
+    ( d, ss )                        : measure = ( (), d, ss )
+
+;  note -> pitch | nil
+getPitch n = match n
+    ( _, _, _, _, _, p, _, _, _ ) : note = p
+    n                             : note = (getPitch . expandEvent) n
+
+; event -> dur | ()
+getDur n = match n
+    ( _, _, _, _, d, _, _, _, _) : note    = d
+    ( _, _, _, _, d, _, _)       : rest    = d
+    ( d, _)                      : measure = d
+    n                            : event   = (getDur . expandEvent) n
+
 ; part -> id
 getId (id, _, _) : part = id
-
-; Returns the pitch of the given note. May be nil, meaning that the
-; previous pitch is used.
-;     note -> pitch | nil
-getPitch n = match n
-    (_, _, _, _, _, p, _, _, _) : (_, _, _, _, _, pitch, _, _, _) = p
-    ; (_, _, p, _, _, _)          : (_, _, pitch, _, _, _) = p
-    ; (_, p, _, _, _)             : (_, pitch, _, _, _) = p
-    ; (p, _, _, _)                : (pitch, _, _, _) = p
-    ; (_, _, p, _, _)             : (_, _, pitch, _, _) = p
-    ; (_, p, _, _)                : (_, pitch, _, _) = p
-    ; (p, _, _)                   : (pitch, _, _) = p
-    _ : note = ()
-
-; Returns the duration of the given event. May be nil, meaning that the
-; previous duration is used.
-;     event -> dur | ()
-getDur n = match n
-    (_, _, _, _, d, _, _, _, _) : (_, _, _, _, dur, _, _, _, _) = d
-    (_, _, _, _, d, _, _)       : (_, _, _, _, dur, _, _) = d
-    ; (_, d, _, _, _, _)          : (_, dur, _, _, _, _) = d
-    ; (d, _, _, _, _)             : (dur, _, _, _, _) = d
-    ; (_, d, _, _, _)             : (_, dur, _, _, _) = d
-    ; (d, _, _, _)                : (dur, _, _, _) = d
-    ; (_, d, _)                   : (_, dur, _) = d
-    ; (d, _)                      : (dur, _) = d
-    _ : event = ()
-
+    
 
 
 ; Export
@@ -235,9 +228,9 @@ fomus data = match data
     
     (name, value)             : setting = name ++ " " ++ fomus value
 
-    (id, templ, percs)        : inst = "inst <"
+    (id, template, percs)     : inst = "inst <"
                                     ++ "id="        ++ id              ++ " " 
-                                    ++ "template="  ++ fomus templ     ++ " " 
+                                    ++ "template="  ++ fomus template  ++ " " 
                                     ++ "percinsts=" ++ fomusList percs ++ ">"
     (id, inst, settings)      : part = "part <"
                                     ++ "id="   ++ id         ++ " " 
@@ -254,11 +247,6 @@ fomus data = match data
                                     ++ maybeDynamic dyn ++ " " 
                                     ++ fomus marks      ++ " " 
                                     ++ fomus settings   ++ ";"
-    ; (time, dur, pitch, dyn, marks, settings) : note = fomus ((), (), time, (), dur, pitch, dyn, marks, settings)
-    ; (dur, pitch, dyn, marks, settings) : note       = fomus ((), (), (), (), dur, pitch, dyn, marks, settings)
-    ; (time, dur, pitch, marks, settings) : note      = fomus ((), (), time, (), dur, pitch, marks, settings)
-    ; (dur, pitch, marks, settings) : note            = 
-    ; (pitch, marks, settings)  : note                = 
     (part, voice, time, grace, dur, marks, settings) : rest = "rest "
                                     ++ maybePart part   ++ " " 
                                     ++ maybeVoice voice ++ " " 
@@ -267,12 +255,13 @@ fomus data = match data
                                     ++ maybeDur dur     ++ " " 
                                     ++ fomus marks      ++ " " 
                                     ++ fomus settings   ++ ";"
-    (time, dur, settings)     : measdef = ""
-                                           ++ maybeTime time
-                                    ++ " " ++ maybeDur  dur
-                                    ++ " " ++ "measure=<" ++ fomus settings ++ ">"
+    (time, dur, settings)     : measure = ""
+                                    ++ maybeTime time   ++ " "
+                                    ++ maybeDur  dur    ++ " "
+                                    ++ "measure <" ++ fomus settings ++ ">"
+    event                     : event = (fomus . expandEvent) event
 
-    (events, decls, settings) : score  = join "\n\n" [fomus settings, fomus decls, fomus events]
+    (events, decls, settings) : score = join "\n\n" [fomus settings, fomus decls, fomus events]
 
     settings : [setting]    = join " " (map fomus settings)
     marks    : [mark]       = join " " (map fomus marks)
