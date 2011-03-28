@@ -62,30 +62,23 @@ percNote inst = match inst
     x : largeCymbal = 79
 
 
-; Events
 
+events _ =
+    let melody = map (setTime "+")
+        durs = (loop 1)
+        pitches = (loop (percNote largeCymbal))
+        dyns = (loop 1.0)
 
-
-
-
-
-durs = (loop 1)
-pitches = (loop (percNote largeCymbal))
-dyns = (loop 1.0)
-
-
-
-events = take 20 
-    zip5 durs pitches dyns (loop []) (loop [])
-
-
+        take 20
+            melody
+                zip5 durs pitches dyns (loop []) (loop [])
 
 
 
 ; Main program
 
-main _ = (export . fomus) (events, decls, info)
-test _ = fomus (events, decls, info)
+main _ = (export . fomus) (events (), decls, info)
+test _ = fomus (events (), decls, info)
 
 
 
@@ -170,7 +163,6 @@ event   = note | rest | measure
 score   = ( [event], [decl], [setting] )
 
 
-
 ; Utils
 
 ; Expands a sparse event to its complete form, substituting nil for all missing slots 
@@ -209,6 +201,15 @@ getDyn   = getNDyn . expandEvent
 
 ;   part -> id
 getId (id, _, _) : part = id
+    
+setPart  x e = setNPart  x (expandEvent e)
+setVoice x e = setNVoice x (expandEvent e)
+setTime  x e = setNTime  x (expandEvent e)
+setGrace x e = setNGrace x (expandEvent e)
+setDur   x e = setNDur   x (expandEvent e)
+setPitch x e = setNPitch x (expandEvent e)
+setDyn   x e = setNDyn   x (expandEvent e)
+setMarks x e = setNMarks x (expandEvent e)
 
 
 ; Simple inspectors for the repl
