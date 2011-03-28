@@ -16,7 +16,7 @@ FILE_NAME     = "out"
 
 
 
-info  = [ ("title", "Skikt")
+info  = [ ("title",  "Skikt")
         , ("author", "Hans Hoglund 2011") ]
     
 insts = [ ("perc1", "percussion", ["snare-drum", "bass-drum"]) ]
@@ -62,14 +62,8 @@ decls = insts ++ parts
 
 
 
-main _ = do
-    text = fomus ([], decls, info)
-    print text
-    export text
-
+main _ = (export . fomus) ([], decls, info)
 test _ = fomus ([], decls, info)
-
-
 
 
 
@@ -87,10 +81,174 @@ test _ = fomus ([], decls, info)
 ; text on a format understood by FOMUS, which may be written to
 ; a fms file.
 
-; Basic values
-time    = prec
-dur     = prec | "+" | (`+)
-grace   = prec
+
+sign = "(.." 
+     | "*"
+     | "+"
+     | "-"
+     | "."
+     | ".((."
+     | ".(."
+     | "..)"
+     | "..))"
+     | "..<"
+     | "..>"
+     | "."
+     | "dash)"
+     | "..dash))"
+     | "..dot)"
+     | "..dot))"
+     | "..grace)"
+     | "..ped"
+     | "..tup"
+     | "..x!"
+     | "..x^"
+     | "..x_"
+     | ".<."
+     | ".>."
+     | ".dash((."
+     | ".dash(."
+     | ".dot((."
+     | ".dot(."
+     | ".grace(."
+     | ".ped."
+     | ".x!."
+     | ".x^."
+     | ".x_."
+     | "/"
+     | "/."
+     | "0"
+     | "<.."
+     | ">"
+     | ">.."
+     | "^"
+     | "arco"
+     | "arp"
+     | "arp^"
+     | "arp_"
+     | "artharm-base"
+     | "artharm-sounding"
+     | "artharm-touched"
+     | "bellsup"
+     | "break<"
+     | "break>"
+     | "breath"
+     | "breath<"
+     | "breath>"
+     | "cuivre"
+     | "damp"
+     | "dash((.."
+     | "dash(.."
+     | "dot((.."
+     | "dot(.."
+     | "downbow"
+     | "dyn"
+     | "etouf"
+     | "f"
+     | "ferm"
+     | "ferm-long"
+     | "ferm-short"
+     | "ferm-verylong"
+     | "ff"
+     | "fff"
+     | "ffff"
+     | "fffz"
+     | "ffz"
+     | "flaut"
+     | "flt"
+     | "fz"
+     | "gliss<"
+     | "gliss>"
+     | "grace(.."
+     | "leg"
+     | "legno"
+     | "longtr"
+     | "longtr2"
+     | "lv"
+     | "mf"
+     | "moltoleg"
+     | "moltovib"
+     | "mp"
+     | "mute"
+     | "natharm-sounding"
+     | "natharm-string"
+     | "natharm-touched"
+     | "nonleg"
+     | "nonvib"
+     | "o"
+     | "ord"
+     | "p"
+     | "ped.."
+     | "pizz"
+     | "pont"
+     | "port<"
+     | "port>"
+     | "pp"
+     | "ppp"
+     | "pppp"
+     | "ppppp"
+     | "pppppp"
+     | "punta"
+     | "rf"
+     | "rfz"
+     | "ric"
+     | "salt"
+     | "sf"
+     | "sff"
+     | "sfff"
+     | "sfffz"
+     | "sffz"
+     | "sfz"
+     | "slap"
+     | "snap"
+     | "snappizz"
+     | "spic"
+     | "sul"
+     | "table"
+     | "tall"
+     | "tasto"
+     | "tempo"
+     | "trem"
+     | "trem2"
+     | "tup.."
+     | "unmute"
+     | "upbow"
+     | "vib"
+     | "x"
+     | "x!"
+     | "x!.."
+     | "x^"
+     | "x^.."
+     | "x_"
+     | "x_.."
+     | "~"
+     | (`-)
+     | (`.)
+     | (`!)
+     | (`+)
+     | `f
+     | `ff
+     | `fff
+     | `ffff
+     | `mp
+     | `mf
+     | `p
+     | `pp
+     | `ppp
+     | `pppp 
+
+fff     = `fff
+ff      = `ff
+f       = `f
+mf      = `mf
+mp      = `mp
+p       = `p
+pp      = `pp
+ppp     = `ppp
+
+time    = prec | "+"
+grace   = prec | "+"
+dur     = prec | "+" | "-"
 pitch   = prec
 dynamic = float
 voice   = int
@@ -110,127 +268,30 @@ inst    = templ
 part    = (ident, inst, [setting])
 ; metapart = ([part, metapart], [setting]) TODO
 
-; Marks can be represented by a single string (same as in FOMUS files)
-; or as a tuple, containing arguments. We define some common cases as
-; symbols as well.
-
-sign    = "(.." | "*" | "+" | "-" | "."
-        | ".((." | ".(." | "..)" | "..))"
-        | "..<" | "..>" | "."
-        | "dash)" | "..dash))"
-        | "..dot)" | "..dot))"
-        | "..grace)"
-        | "..ped"
-        | "..tup"
-        | "..x!" | "..x^" | "..x_" | ".<." | ".>."
-        | ".dash((." | ".dash(."
-        | ".dot((." | ".dot(."
-        | ".grace(."
-        | ".ped."
-        | ".x!." | ".x^." | ".x_."
-        | "/" | "/."
-        | "0"
-        | "<.." | ">" | ">.."
-        | "^"
-        | "arco" | "arp" | "arp^" | "arp_"
-        | "artharm-base" | "artharm-sounding" | "artharm-touched"
-        | "bellsup"
-        | "break<" | "break>"
-        | "breath" | "breath<" | "breath>"
-        | "cuivre"
-        | "damp"
-        | "dash((.." | "dash(.."
-        | "dot((.." | "dot(.."
-        | "downbow"
-        | "dyn"
-        | "etouf"
-        | "f"
-        | "ferm" | "ferm-long" | "ferm-short" | "ferm-verylong"
-        | "ff" | "fff" | "ffff" | "fffz" | "ffz"
-        | "flaut"
-        | "flt"
-        | "fz"
-        | "gliss<" | "gliss>"
-        | "grace(.."
-        | "leg"
-        | "legno"
-        | "longtr" | "longtr2"
-        | "lv"
-        | "mf"
-        | "moltoleg" | "moltovib"
-        | "mp"
-        | "mute"
-        | "natharm-sounding" | "natharm-string" | "natharm-touched"
-        | "nonleg"
-        | "nonvib"
-        | "o"
-        | "ord"
-        | "p"
-        | "ped.."
-        | "pizz"
-        | "pont"
-        | "port<" | "port>"
-        | "pp" | "ppp" | "pppp" | "ppppp" | "pppppp"
-        | "punta"
-        | "rf" | "rfz"
-        | "ric"
-        | "salt"
-        | "sf" | "sff" | "sfff" | "sfffz" | "sffz" | "sfz"
-        | "slap"
-        | "snap" | "snappizz"
-        | "spic"
-        | "sul" | "table" | "tall" | "tasto"
-        | "tempo"
-        | "trem" | "trem2"
-        | "tup.."
-        | "unmute" | "upbow"
-        | "vib"
-        | "x" | "x!" | "x!.." | "x^" | "x^.." | "x_" | "x_.." | "~"
-        | (`-) | (`.) | (`!) | (`+)
-        | `f | `ff | `fff | `ffff
-        | `mp | `mf
-        | `p | `pp | `ppp | `pppp 
 mark    = sign 
         | (sign, num) 
         | (sign, str) 
         | (sign, num, str)
-fff     = `fff
-ff      = `ff
-f       = `f
-mf      = `mf
-mp      = `mp
-p       = `p
-pp      = `pp
-ppp     = `ppp
 
-note    = (part, voice, time, grace, dur, pitch, dynamic, [mark], [setting] )
-rest    = (part, voice, time, grace, dur, [mark], [setting] )
+note    = (part, voice, time, grace, dur, pitch, dynamic, [mark], [setting])
+rest    = (part, voice, time, grace, dur, [mark], [setting])
+measdef = (time, dur, [setting])
 
-measdef = (time, dur, [setting] )
-        | (time, dur, [] )
-
+decl    = part | inst | perc | staff | clef
 event   = note | rest | measdef
-decl    = part | inst | perc | clef | staff
 
 score   = ([event], [decl], [setting])
-        | ([], [decl], [setting])
-        | ([event], [], [setting])
-        | ([event], [decl])
-        | ([], [decl])
-        | ([event], [])
-        | ([], [], [setting])
 
-; =============================================================================
 
 ; Returns a string representation of the given FOMUS data.
 
 fomus data = match data
     
-    (name, value)             : setting = fomus name ++ " " ++ fomus value
+    (name, value)             : setting = name ++ " " ++ fomus value
                       
-    ; TODO perc
     ; TODO clef
     ; TODO staff
+    ; TODO perc
     
     (id, templ, percs)        : inst = "inst <"
                                            ++ "id " ++ id
@@ -242,6 +303,9 @@ fomus data = match data
                                     ++ " " ++ "inst " ++ fomus inst 
                                     ++ " " ++ fomus settings 
                                     ++ ">"
+                                    
+    ; TODO metapart
+                                    
     (id, arg1, arg2)          : mark = "[" ++ (string id) ++ " " ++ (fomus arg1) ++ " " ++ (fomus arg2) ++ "]"
     (id, arg)                 : mark = "[" ++ (string id) ++ " " ++ (fomus arg) ++ "]"
     id                        : mark = "[" ++ (string id) ++ "]"
@@ -258,14 +322,14 @@ fomus data = match data
     event    : [event]      = join "\n" (map fomus event)
     decls    : [decl]       = join "\n" (map fomus decls)
     settings : [setting]    = join " " (map fomus settings)
-    xs : [ _ ]              = fomusList xs
-    x : num                 = string x
-    x : str                 = unescape x
-    x : ()                  = ""
+    xs       : [ _ ]        = fomusList xs
+    x        : str          = fomusStr x
+    x        : num          = string x
+    x        : ()           = ""
 
 fomusList xs = "(" ++ join " " (map fomus xs) ++ ")"
+fomusStr x   = "\"" ++ x ++ "\""
 
-unescape x = "\"" ++ x ++ "\""
 
 
 
