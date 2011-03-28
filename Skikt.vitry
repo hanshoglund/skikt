@@ -65,15 +65,15 @@ percNote inst = match inst
 
 events _ =
     let durs = (loop 1)
-        pitches = (arith 1 60)
+        pitches = (60 .. 72)
         dyns = (loop 1.0)
         notes = zip5 durs pitches dyns (loop []) (loop [])
         
         events = 
-            (map (setPart fl) . map (setMarks ["."]) . offset 8 . melody)
+            (map (setPart fl) . map (setMarks ["."]) . melody)
             notes   
         
-        take 20 events
+        take 30 (cycle events)
 
 
 
@@ -233,7 +233,7 @@ melody = map (setTime "+")
 chord  = map (setTime nil)
 
 ;   dur -> [event] -> [event]
-offset d = prepend (0, d, [], [])
+offset d = prepend ("+", d, [], [])
 
 
 ; Simple inspectors for the repl
