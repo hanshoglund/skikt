@@ -274,9 +274,9 @@ mark    = sign
         | (sign, num, str)
 
 note    = (part, voice, time, grace, dur, pitch, dynamic, [mark], [setting])
-        ; | (time, dur, pitch, dynamic, [mark], [setting])
-        ; | (dur, pitch, dynamic, [mark], [setting])
-        ; | (pitch, dynamic, [mark], [setting])
+        | (time, dur, pitch, dynamic, [mark], [setting])
+        | (dur, pitch, dynamic, [mark], [setting])
+        | (pitch, dynamic, [mark], [setting])
         | (time, dur, pitch, [mark], [setting])
         | (dur, pitch, [mark], [setting])
         | (pitch, [mark], [setting])
@@ -313,11 +313,29 @@ fomus data = match data
     id                        : mark = "[" ++ string id ++ "]"
                                                             
     (part, voice, time, grace, dur, pitch, dynamic, marks, settings) : note = "part " ++ (getId part)
-                                    ++ " " ++ "voice " ++ (string voice)
+                                    ++ " " ++ "voice " ++ string voice
                                     ++ " " ++ (match time (x : () = "") (x = ("time " ++ string time)))
                                     ++ " " ++ (match grace (x : () = "") (x = ("grace " ++ string grace)))
                                     ++ " " ++ "dur " ++ string dur
                                     ++ " " ++ "pitch " ++ string pitch 
+                                    ++ " " ++ "dynamic " ++ string dynamic 
+                                    ++ " " ++ fomus marks 
+                                    ++ " " ++ fomus settings
+                                    ++ ";"           
+    (time, dur, pitch, dynamic, marks, settings) : note = (match time (x : () = "") (x = ("time " ++ string time)))
+                                    ++ " " ++ "dur " ++ string dur
+                                    ++ " " ++ "pitch " ++ string pitch 
+                                    ++ " " ++ "dynamic " ++ string dynamic 
+                                    ++ " " ++ fomus marks 
+                                    ++ " " ++ fomus settings
+                                    ++ ";"
+    (dur, pitch, dynamic, marks, settings) : note = "dur " ++ string dur
+                                    ++ " " ++ "pitch " ++ string pitch 
+                                    ++ " " ++ "dynamic " ++ string dynamic 
+                                    ++ " " ++ fomus marks 
+                                    ++ " " ++ fomus settings
+                                    ++ ";"
+    (pitch, dynamic, marks, settings)  : note = "pitch " ++ string pitch 
                                     ++ " " ++ "dynamic " ++ string dynamic 
                                     ++ " " ++ fomus marks 
                                     ++ " " ++ fomus settings
@@ -336,7 +354,7 @@ fomus data = match data
     (pitch, marks, settings)  : note = "pitch " ++ string pitch 
                                     ++ " " ++ fomus marks 
                                     ++ " " ++ fomus settings
-                                    ++ ";"                 
+                                    ++ ";"
     (part, voice, time, grace, dur, marks, settings) : rest = "rest "
                                     ++ " " ++ "part " ++ (getId part)
                                     ++ " " ++ "voice " ++ (string voice)
@@ -349,8 +367,6 @@ fomus data = match data
     (time, dur, settings)     : measdef = "time " ++ fomus time 
                                     ++ " " ++ "dur " ++ fomus dur
                                     ++ " " ++ "measure <" ++ fomus settings ++ ">"    
-
-
     
     (events, decls, settings) : score  = join "\n\n" [fomus settings, fomus decls, fomus events]
     
