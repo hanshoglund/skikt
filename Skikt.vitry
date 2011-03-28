@@ -39,6 +39,8 @@ strs    = [ ("vl1",  "violin",          [ ("abbr", "Vl. I") ])
                                         , ("name", "Violoncello") ])
         , ("db",   "bass",              [ ("abbr", "Kb.") ]) ]
 
+parts = winds ++ brass ++ percs ++ strs
+decls = insts ++ parts
 
 
 snareDrum = `snareDrum
@@ -47,9 +49,8 @@ percNote inst = match inst
     x : snareDrum = 72
     x : bassDrum  = 65
 
-parts = winds ++ brass ++ percs ++ strs
-; parts = winds
-decls = insts ++ parts
+
+
 
 
 
@@ -118,11 +119,11 @@ test _ = fomus (events, decls, info)
 
 ; Data
 
-pitch      = prec
-dynamic    = double
 time       = prec | "+" | ()
 grace      = prec | "+" | ()
 dur        = prec | "+" | "-" | ()
+pitch      = prec
+dyn        = double
 voice      = int
 identifier = str
 setting    = (str, (str | num | [str] | [num]))
@@ -164,16 +165,23 @@ mark    = markSign
         | (markSign, str)
         | (markSign, num, str)
 
-note    = (part, voice, time, grace, dur, pitch, dynamic, [mark], [setting])
-        | (time, dur, pitch, dynamic, [mark], [setting])
-        | (dur, pitch, dynamic, [mark], [setting])
-        | (pitch, dynamic, [mark], [setting])
-        | (time, dur, pitch, [mark], [setting])
-        | (dur, pitch, [mark], [setting])
-        | (pitch, [mark], [setting])
-rest    = (part, voice, time, grace, dur, [mark], [setting])
-measdef = (time, dur, [setting])
-        | (dur, [setting])
+note    = (part,  voice,  time,   grace,  dur,    pitch,  dyn,    [mark],  [setting])
+        | (part,  voice,  time,   dur,    pitch,  dyn,    [mark], [setting])
+        ; | (part,  voice,  time,   dur,    pitch,  [mark], [setting])              ; collides
+        | (time,  dur,    pitch,  dyn,    [mark], [setting])
+        | (dur,   pitch,  dyn,    [mark], [setting])
+        | (pitch, dyn,    [mark], [setting])
+        | (time,  dur,    pitch,  [mark], [setting])
+        | (dur,   pitch,  [mark], [setting])
+        ; | (pitch, [mark], [setting])
+rest    = (part,  voice,  time,   grace,  dur,    [mark], [setting])
+        | (part,  voice,  time,   dur,    [mark], [setting])
+        | (part,  voice,  dur,    [mark], [setting]) 
+        | (time,   grace,  dur,    [mark], [setting])
+        ; | (time,   dur,    [mark], [setting])
+        | (dur,    [mark], [setting])
+measdef = (time,  dur,    [setting])
+        | (dur,   [setting])
 
 decl    = part | inst | perc | staff | clef
 event   = note | rest | measdef
@@ -186,7 +194,9 @@ score   = ([event], [decl], [setting])
 ; part -> id
 getId (id, _, _) : part = id
 
-; note -> pitch
+; Returns the pitch of the given note. May be nil, meaning that the
+; previous pitch is used.
+;     note -> pitch | nil
 getPitch n = match n
     (_, _, _, _, _, p, _, _, _) : (_, _, _, _, _, pitch, _, _, _) = p
     ; (_, _, p, _, _, _)          : (_, _, pitch, _, _, _) = p
@@ -197,7 +207,9 @@ getPitch n = match n
     ; (p, _, _)                   : (pitch, _, _) = p
     _ : note = ()
 
-; event -> dur
+; Returns the duration of the given event. May be nil, meaning that the
+; previous duration is used.
+;     event -> dur | ()
 getDur n = match n
     (_, _, _, _, d, _, _, _, _) : (_, _, _, _, dur, _, _, _, _) = d
     (_, _, _, _, d, _, _)       : (_, _, _, _, dur, _, _) = d
@@ -214,9 +226,7 @@ getDur n = match n
 ; Export
 
 ; Returns a string representation of the given FOMUS data.
-; TODO clef staff perc metapart
-
-; setting | inst | part | mark | note | rest | measdef | score -> str
+;     mark | decl | event | setting | [mark] | [decl] | [event] | [setting] | score -> str
 fomus data = match data
 
     (id, x, y)                : mark = "[" ++ string id ++ " " ++ fomus x ++ " " ++ fomus y ++ "]"
@@ -226,7 +236,7 @@ fomus data = match data
     (name, value)             : setting = name ++ " " ++ fomus value
 
     (id, templ, percs)        : inst = "inst <"
-                                           ++ "id=" ++ id              ++ " " 
+                                    ++ "id="        ++ id              ++ " " 
                                     ++ "template="  ++ fomus templ     ++ " " 
                                     ++ "percinsts=" ++ fomusList percs ++ ">"
     (id, inst, settings)      : part = "part <"
@@ -264,10 +274,10 @@ fomus data = match data
 
     (events, decls, settings) : score  = join "\n\n" [fomus settings, fomus decls, fomus events]
 
+    settings : [setting]    = join " " (map fomus settings)
+    marks    : [mark]       = join " " (map fomus marks)
     event    : [event]      = join "\n" (map fomus event)
     decls    : [decl]       = join "\n" (map fomus decls)
-    marks    : [mark]       = join " " (map fomus marks)
-    settings : [setting]    = join " " (map fomus settings)
     x        : str          = fomusStr x
     x        : num          = string x
     x        : ()           = ""
