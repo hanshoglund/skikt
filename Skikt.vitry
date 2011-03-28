@@ -12,7 +12,7 @@ scoreEditor = "/Applications/Sibelius 6.app"
 fileDir     = "/Users/hans/Documents/Musik/Skikt/output/"
 fileName    = "out"
 preview     = false
-
+fixClefs    = false
 
 info  = [ ("title",  "Skikt")
         , ("author", "Hans Hoglund 2011") ]
@@ -25,22 +25,24 @@ winds = [ ("fl",   "flute",             [ ("abbr", "Fl.") ])
         , ("bsn",  "bassoon",           [ ("abbr", "Fag.") ]) ]
 brass = [ ("hrn",  "horn",              [ ("abbr", "Hrn.") ])
         , ("tpt",  "bflat-trumpet",     [ ("abbr", "Tpt.") ])
-        , ("tbn",  "tenor-trombone",    [ ("abbr", "Tbn.") ]) ]            
+        , ("tbn",  "tenor-trombone",    [ ("abbr", "Tbn.") ]) ]
 percs = [ ("pno",  "piano",             [ ("abbr", "Pno.") ])
         , ("vib",  "vibraphone",        [ ("abbr", "Vib.") ])
         , ("crot", "vibraphone",        [ ("abbr", "Crot.")
-                                        , ("name", "Crotales") ])        
-        , ("perc", "perc1",             [ ("abbr", "Perc.") 
+                                        , ("name", "Crotales") ])
+        , ("perc", "perc1",             [ ("abbr", "Perc.")
                                         , ("name", "Percussion")]) ]
 strs    = [ ("vl1",  "violin",          [ ("abbr", "Vl. I") ])
         , ("vl2",  "violin",            [ ("abbr", "Vl. II") ])
         , ("vla",  "viola",             [ ("abbr", "Vla.") ])
         , ("vc",   "cello",             [ ("abbr", "Vc.")
-                                        , ("name", "Violoncello") ])   
+                                        , ("name", "Violoncello") ])
         , ("db",   "bass",              [ ("abbr", "Kb.") ]) ]
 
+
+
 snareDrum = `snareDrum
-bassDrum = `bassDrum
+bassDrum  = `bassDrum
 percNote inst = match inst
     x : snareDrum = 72
     x : bassDrum  = 65
@@ -58,11 +60,11 @@ melody part = zip3With (fn (time dur pitch) (part, 1, time, (), dur, pitch, (ran
 nothing part = map (fn (dur) (part, 1, "+", [], dur, [], []))
 
 myPart = index 3 percs
-notes = melody myPart (loop "+") (map (+ 1) (randoms 3)) (unroll (pluck pick [percNote snareDrum, percNote bassDrum]))
+notes = melody myPart (loop "+") (map (+ 1) (randoms 4)) (unroll (pluck pick [percNote snareDrum, percNote bassDrum]))
 rests = nothing myPart (loop ((11/3) * 5))
 
 
-events = take 10 (interl notes rests) 
+events = take 40 (interl notes rests)
 ; events = take 30 notes
 
 
@@ -148,7 +150,7 @@ templ   = identifier
 clef    = [setting]
 staff   = ([clef], [setting])
 
-perc    = templ 
+perc    = templ
         | (identifier, [setting])
 inst    = templ
         | (identifier, templ, [perc])
@@ -157,9 +159,9 @@ inst    = templ
 
 part    = (identifier, inst, [setting])
 
-mark    = markSign 
-        | (markSign, num) 
-        | (markSign, str) 
+mark    = markSign
+        | (markSign, num)
+        | (markSign, str)
         | (markSign, num, str)
 
 note    = (part, voice, time, grace, dur, pitch, dynamic, [mark], [setting])
@@ -181,8 +183,31 @@ score   = ([event], [decl], [setting])
 
 ; Utils
 
+; part -> id
 getId (id, _, _) : part = id
 
+; note -> pitch
+getPitch n = match n
+    (_, _, _, _, _, p, _, _, _) : (_, _, _, _, _, pitch, _, _, _) = p
+    ; (_, _, p, _, _, _)          : (_, _, pitch, _, _, _) = p
+    ; (_, p, _, _, _)             : (_, pitch, _, _, _) = p
+    ; (p, _, _, _)                : (pitch, _, _, _) = p
+    ; (_, _, p, _, _)             : (_, _, pitch, _, _) = p
+    ; (_, p, _, _)                : (_, pitch, _, _) = p
+    ; (p, _, _)                   : (pitch, _, _) = p
+    _ : note = ()
+
+; event -> dur
+getDur n = match n
+    (_, _, _, _, d, _, _, _, _) : (_, _, _, _, dur, _, _, _, _) = d
+    (_, _, _, _, d, _, _)       : (_, _, _, _, dur, _, _) = d
+    ; (_, d, _, _, _, _)          : (_, dur, _, _, _, _) = d
+    ; (d, _, _, _, _)             : (dur, _, _, _, _) = d
+    ; (_, d, _, _, _)             : (_, dur, _, _, _) = d
+    ; (d, _, _, _)                : (dur, _, _, _) = d
+    ; (_, d, _)                   : (_, dur, _) = d
+    ; (d, _)                      : (dur, _) = d
+    _ : event = ()
 
 
 
@@ -193,94 +218,71 @@ getId (id, _, _) : part = id
 
 ; setting | inst | part | mark | note | rest | measdef | score -> str
 fomus data = match data
-    
+
     (id, x, y)                : mark = "[" ++ string id ++ " " ++ fomus x ++ " " ++ fomus y ++ "]"
     (id, x)                   : mark = "[" ++ string id ++ " " ++ fomus x ++ "]"
-    id                        : mark = "[" ++ string id ++ "]"                                                    
+    id                        : mark = "[" ++ string id ++ "]"
     
     (name, value)             : setting = name ++ " " ++ fomus value
-    
+
     (id, templ, percs)        : inst = "inst <"
-                                           ++ "id=" ++ id
-                                    ++ " " ++ "template="  ++ fomus templ 
-                                    ++ " " ++ "percinsts=" ++ fomusList percs
-                                    ++ ">"
-    (id, inst, settings)      : part = "part=<"
-                                           ++ "id="   ++ id 
-                                    ++ " " ++ "inst=" ++ fomus inst 
-                                    ++ " " ++ fomus settings 
-                                    ++ ">"
+                                           ++ "id=" ++ id              ++ " " 
+                                    ++ "template="  ++ fomus templ     ++ " " 
+                                    ++ "percinsts=" ++ fomusList percs ++ ">"
+    (id, inst, settings)      : part = "part <"
+                                    ++ "id="   ++ id         ++ " " 
+                                    ++ "inst=" ++ fomus inst ++ " " 
+                                    ++ fomus settings        ++ ">"
     
-    (part, voice, time, grace, dur, pitch, dynamic, marks, settings) : note = "part=" ++ (getId part)
-                                    ++ " " ++ "voice=" ++ string voice
-                                    ++ " " ++ (match time (x : () = "") (x = ("time=" ++ string time)))
-                                    ++ " " ++ (match grace (x : () = "") (x = ("grace=" ++ string grace)))
-                                    ++ " " ++ "dur=" ++ string dur
-                                    ++ " " ++ "pitch=" ++ string pitch 
-                                    ++ " " ++ "dyn=" ++ string dynamic 
-                                    ++ " " ++ fomus marks 
-                                    ++ " " ++ fomus settings
-                                    ++ ";"           
-    (time, dur, pitch, dynamic, marks, settings) : note = (match time (x : () = "") (x = ("time=" ++ string time)))
-                                    ++ " " ++ "dur=" ++ string dur
-                                    ++ " " ++ "pitch=" ++ string pitch 
-                                    ++ " " ++ "dyn=" ++ string dynamic 
-                                    ++ " " ++ fomus marks 
-                                    ++ " " ++ fomus settings
-                                    ++ ";"
-    (dur, pitch, dynamic, marks, settings) : note = "dur=" ++ string dur
-                                    ++ " " ++ "pitch=" ++ string pitch 
-                                    ++ " " ++ "dyn=" ++ string dynamic 
-                                    ++ " " ++ fomus marks 
-                                    ++ " " ++ fomus settings
-                                    ++ ";"
-    (pitch, dynamic, marks, settings)  : note = "pitch=" ++ string pitch 
-                                    ++ " " ++ "dyn=" ++ string dynamic 
-                                    ++ " " ++ fomus marks 
-                                    ++ " " ++ fomus settings
-                                    ++ ";"
-    (time, dur, pitch, marks, settings) : note = (match time (x : () = "") (x = ("time=" ++ string time)))
-                                    ++ " " ++ "dur=" ++ string dur
-                                    ++ " " ++ "pitch=" ++ string pitch 
-                                    ++ " " ++ fomus marks 
-                                    ++ " " ++ fomus settings
-                                    ++ ";"
-    (dur, pitch, marks, settings) : note = "dur=" ++ string dur
-                                    ++ " " ++ "pitch=" ++ string pitch 
-                                    ++ " " ++ fomus marks 
-                                    ++ " " ++ fomus settings
-                                    ++ ";"
-    (pitch, marks, settings)  : note = "pitch=" ++ string pitch 
-                                    ++ " " ++ fomus marks 
-                                    ++ " " ++ fomus settings
-                                    ++ ";"
+    (part, voice, time, grace, dur, pitch, dyn, marks, settings) : note = ""
+                                    ++ maybePart part   ++ " " 
+                                    ++ maybeVoice voice ++ " " 
+                                    ++ maybeTime time   ++ " " 
+                                    ++ maybeGrace grace ++ " " 
+                                    ++ maybeDur dur     ++ " " 
+                                    ++ maybePitch pitch ++ " " 
+                                    ++ maybeDynamic dyn ++ " " 
+                                    ++ fomus marks      ++ " " 
+                                    ++ fomus settings   ++ ";"
+    ; (time, dur, pitch, dyn, marks, settings) : note = fomus ((), (), time, (), dur, pitch, dyn, marks, settings)
+    ; (dur, pitch, dyn, marks, settings) : note       = fomus ((), (), (), (), dur, pitch, dyn, marks, settings)
+    ; (time, dur, pitch, marks, settings) : note      = fomus ((), (), time, (), dur, pitch, marks, settings)
+    ; (dur, pitch, marks, settings) : note            = 
+    ; (pitch, marks, settings)  : note                = 
     (part, voice, time, grace, dur, marks, settings) : rest = "rest "
-                                    ++ " " ++ "part=" ++ (getId part)
-                                    ++ " " ++ "voice=" ++ (string voice)
-                                    ++ " " ++ (match time (x : () = "") (x = ("time=" ++ string time)))
-                                    ++ " " ++ (match grace (x : () = "") (x = ("grace=" ++ string grace)))
-                                    ++ " " ++ "dur=" ++ string dur
-                                    ++ " " ++ fomus marks 
-                                    ++ " " ++ fomus settings
-                                    ++ ";"  
-    (time, dur, settings)     : measdef = "time=" ++ fomus time 
-                                    ++ " " ++ "dur=" ++ fomus dur
-                                    ++ " " ++ "measure=<" ++ fomus settings ++ ">"    
-    
+                                    ++ maybePart part   ++ " " 
+                                    ++ maybeVoice voice ++ " " 
+                                    ++ maybeTime time   ++ " " 
+                                    ++ maybeGrace grace ++ " " 
+                                    ++ maybeDur dur     ++ " " 
+                                    ++ fomus marks      ++ " " 
+                                    ++ fomus settings   ++ ";"
+    (time, dur, settings)     : measdef = ""
+                                           ++ maybeTime time
+                                    ++ " " ++ maybeDur  dur
+                                    ++ " " ++ "measure=<" ++ fomus settings ++ ">"
+
     (events, decls, settings) : score  = join "\n\n" [fomus settings, fomus decls, fomus events]
-    
+
     event    : [event]      = join "\n" (map fomus event)
     decls    : [decl]       = join "\n" (map fomus decls)
     marks    : [mark]       = join " " (map fomus marks)
     settings : [setting]    = join " " (map fomus settings)
     x        : str          = fomusStr x
     x        : num          = string x
-    x        : ()           = ""      
+    x        : ()           = ""
     xs       : [_]          = fomusList xs
 
 fomusList xs = "(" ++ join " " (map fomus xs) ++ ")"
 fomusStr x   = "\"" ++ x ++ "\""
 
+maybePart x    = match x (x : () = "") (x = "part="    ++ getId x)
+maybeVoice x   = match x (x : () = "") (x = "voice="   ++ string x)
+maybeTime x    = match x (x : () = "") (x = "time="    ++ string x)
+maybeGrace x   = match x (x : () = "") (x = "grace="   ++ string x)
+maybeDur x     = match x (x : () = "") (x = "dur="     ++ string x)
+maybePitch x   = match x (x : () = "") (x = "pitch="   ++ string x)
+maybeDynamic x = match x (x : () = "") (x = "dynamic=" ++ string x)
 
 
 ; =============================================================================
@@ -293,16 +295,18 @@ lyFile  = fileDir ++ fileName ++ ".ly"
 
 ; Writes the given text to a file and displays it
 
-export text = do 
+export text = do
     writeFile fmsFile text
     if preview
         do run [ "fomus", fmsFile, "-o", lyFile ]
         ; else
-        do run [ "fomus", fmsFile, "-o", xmlFile ]            
-            ; Work around issue with FOMUS and clefs
-            print "adjusting fomus clefs..."
-            replaceFile xmlFile
-                [ "<sign>F</sign>", "<sign>C</sign>" ]
-                [ "<sign>F</sign><line>4</line>", "<sign>C</sign><line>3</line>" ]
+        do run [ "fomus", fmsFile, "-o", xmlFile ]
+            if fixClefs 
+                do print "adjusting fomus clefs..."
+                    replaceFile xmlFile
+                        [ "<sign>F</sign>", "<sign>C</sign>" ]
+                        [ "<sign>F</sign><line>4</line>", "<sign>C</sign><line>3</line>" ]
+                ; else
+                ()
             ; Open the score
-            run [ "open", "-a", scoreEditor, xmlFile ]   
+            run [ "open", "-a", scoreEditor, xmlFile ]
