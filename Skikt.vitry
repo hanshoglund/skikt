@@ -64,14 +64,18 @@ percNote inst = match inst
 
 
 events _ =
-    let melody = map (setTime "+")
-        durs = (loop 1)
-        pitches = (loop (percNote largeCymbal))
+    let durs = (loop 1)
+        pitches = (arith 1 60)
         dyns = (loop 1.0)
+        notes = zip5 durs pitches dyns (loop []) (loop [])
+        
+        events = 
+            (map (setPart fl) . map (setMarks ["."]) . offset 8 . melody)
+            notes   
+        
+        take 20 events
 
-        take 20
-            melody
-                zip5 durs pitches dyns (loop []) (loop [])
+
 
 
 
@@ -79,7 +83,7 @@ events _ =
 
 main _ = (export . fomus) (events (), decls, info)
 test _ = fomus (events (), decls, info)
-
+dump _ = join "\n" (events ())
 
 
 
@@ -167,7 +171,11 @@ score   = ( [event], [decl], [setting] )
 
 ; Expands a sparse event to its complete form, substituting nil for all missing slots 
 ;   event -> event
-expandEvent e : event = match e
+expandEvent e : event = match e       
+    ; Unchanged cases
+    ( r, v, t, g, d, p, n, ms, ss) = e
+    ( p, v, t, g, d, ms, ss)       = e
+
     ( r, v, t, d, p, n:dyn, ms, ss ) : note    = ( r,  v,  t,  (), d,  p, n, ms, ss )
     ( t, d, p, n:dyn, ms, ss )       : note    = ( (), (), t,  (), d,  p, n, ms, ss )
     ( d, p, n:dyn, ms, ss )          : note    = ( (), (), (), (), d,  p, n, ms, ss )
@@ -180,14 +188,21 @@ getNPitch ( _, _, _, _, _, p, _, _, _ ) = p
 getNDyn   ( _, _, _, _, _, _, n, _, _ ) = n
 getRDur   ( _, _, _, _, d, _, _ )       = d
 getMDur   ( d, _ )                      = d
-setNPart  r ( _, v, t, g, d, p, n, ms, ss ) = (r, v, t, g, d, p, n, ms, ss)
-setNVoice v ( r, _, t, g, d, p, n, ms, ss ) = (r, v, t, g, d, p, n, ms, ss)
-setNTime  t ( r, v, _, g, d, p, n, ms, ss ) = (r, v, t, g, d, p, n, ms, ss)
-setNGrace g ( r, v, t, _, d, p, n, ms, ss ) = (r, v, t, g, d, p, n, ms, ss)
-setNDur   d ( r, v, t, g, _, p, n, ms, ss ) = (r, v, t, g, d, p, n, ms, ss)
-setNPitch p ( r, v, t, g, d, _, n, ms, ss ) = (r, v, t, g, d, p, n, ms, ss)
-setNDyn   n ( r, v, t, g, d, p, _, ms, ss ) = (r, v, t, g, d, p, n, ms, ss)
-setNMarks n ( r, v, t, g, d, p, n, _,  ss ) = (r, v, t, g, d, p, n, ms, ss)
+setNPart  r  ( _, v, t, g, d, p, n, ms, ss ) = (r, v, t, g, d, p, n, ms, ss)
+setNVoice v  ( r, _, t, g, d, p, n, ms, ss ) = (r, v, t, g, d, p, n, ms, ss)
+setNTime  t  ( r, v, _, g, d, p, n, ms, ss ) = (r, v, t, g, d, p, n, ms, ss)
+setNGrace g  ( r, v, t, _, d, p, n, ms, ss ) = (r, v, t, g, d, p, n, ms, ss)
+setNDur   d  ( r, v, t, g, _, p, n, ms, ss ) = (r, v, t, g, d, p, n, ms, ss)
+setNPitch p  ( r, v, t, g, d, _, n, ms, ss ) = (r, v, t, g, d, p, n, ms, ss)
+setNDyn   n  ( r, v, t, g, d, p, _, ms, ss ) = (r, v, t, g, d, p, n, ms, ss)
+setNMarks ms ( r, v, t, g, d, p, n, _,  ss ) = (r, v, t, g, d, p, n, ms, ss)
+setRPart  r  ( _, v, t, g, d, ms, ss ) = (r, v, t, g, d, ms, ss)
+setRVoice v  ( r, _, t, g, d, ms, ss ) = (r, v, t, g, d, ms, ss)
+setRTime  t  ( r, v, _, g, d, ms, ss ) = (r, v, t, g, d, ms, ss)
+setRGrace g  ( r, v, t, _, d, ms, ss ) = (r, v, t, g, d, ms, ss)
+setRDur   d  ( r, v, t, g, _, ms, ss ) = (r, v, t, g, d, ms, ss)
+setRMarks ms ( r, v, t, g, d, _,  ss ) = (r, v, t, g, d, ms, ss)
+
 
 ;   event -> dur
 getDur e = match (expandEvent e)
@@ -201,15 +216,24 @@ getDyn   = getNDyn . expandEvent
 
 ;   part -> id
 getId (id, _, _) : part = id
-    
-setPart  x e = setNPart  x (expandEvent e)
-setVoice x e = setNVoice x (expandEvent e)
-setTime  x e = setNTime  x (expandEvent e)
-setGrace x e = setNGrace x (expandEvent e)
-setDur   x e = setNDur   x (expandEvent e)
+
+;   a -> event -> event    
+setTime  x e = (match e (_ : note = setNTime)  (_ : rest = setRTime) (_ : measure = setMTime)) x (expandEvent e)
+setDur   x e = (match e (_ : note = setNDur)   (_ : rest = setRDur)  (_ : measure = setMDur))  x (expandEvent e)
+setPart  x e = (match e (_ : note = setNPart)  (_ : rest = setRPart))  x (expandEvent e)
+setVoice x e = (match e (_ : note = setNVoice) (_ : rest = setRVoice)) x (expandEvent e)
+setGrace x e = (match e (_ : note = setNGrace) (_ : rest = setRGrace)) x (expandEvent e)
+setMarks x e = (match e (_ : note = setNMarks) (_ : rest = setRMarks)) x (expandEvent e)
 setPitch x e = setNPitch x (expandEvent e)
 setDyn   x e = setNDyn   x (expandEvent e)
-setMarks x e = setNMarks x (expandEvent e)
+
+
+;   [event] -> [event]
+melody = map (setTime "+")
+chord  = map (setTime nil)
+
+;   dur -> [event] -> [event]
+offset d = prepend (0, d, [], [])
 
 
 ; Simple inspectors for the repl
