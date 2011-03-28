@@ -11,9 +11,9 @@ module Hans.Music.Skikt
 SCORE_EDITOR  = "/Applications/Sibelius 6.app"
 FILE_LOCATION = "/Users/hans/Documents/Musik/Skikt/output/"
 FILE_NAME     = "out"
+PREVIEW       = false
 
 ; =============================================================================
-
 
 
 info  = [ ("title",  "Skikt")
@@ -40,11 +40,21 @@ strs    = [ ("vl1",  "violin",          [ ("abbr", "Vl. I") ])
                                         , ("name", "Violoncello") ])   
         , ("db",   "bass",              [ ("abbr", "Kb.") ]) ]
 
-parts = winds ++ brass ++ percs ++ strs
+; parts = winds ++ brass ++ percs ++ strs
+parts = winds
 decls = insts ++ parts
 
 
 
+randoms x = unroll (pluck random x)
+
+
+
+
+; [time] -> [dur] -> [pitch] -> [event]
+melody = zip3With (fn (t d p) (t, d, p, [], []))
+
+events = take 300 (melody (cycle ["+", [], [], []]) (map (+ 1) (randoms 3)) (map (+ 40) (randoms 10))) 
 
 
 
@@ -58,12 +68,8 @@ decls = insts ++ parts
 
 
 
-
-
-
-
-main _ = (export . fomus) ([], decls, info)
-test _ = fomus ([], decls, info)
+main _ = (export . fomus) (events, decls, info)
+test _ = fomus (events, decls, info)
 
 
 
@@ -246,8 +252,8 @@ p       = `p
 pp      = `pp
 ppp     = `ppp
 
-time    = prec | "+"
-grace   = prec | "+"
+time    = prec | "+" | ()
+grace   = prec | "+" | ()
 dur     = prec | "+" | "-"
 pitch   = prec
 dynamic = float
@@ -274,8 +280,15 @@ mark    = sign
         | (sign, num, str)
 
 note    = (part, voice, time, grace, dur, pitch, dynamic, [mark], [setting])
+        ; | (time, dur, pitch, dynamic, [mark], [setting])
+        ; | (dur, pitch, dynamic, [mark], [setting])
+        ; | (pitch, dynamic, [mark], [setting])
+        | (time, dur, pitch, [mark], [setting])
+        | (dur, pitch, [mark], [setting])
+        | (pitch, [mark], [setting])
 rest    = (part, voice, time, grace, dur, [mark], [setting])
 measdef = (time, dur, [setting])
+        | (dur, [setting])
 
 decl    = part | inst | perc | staff | clef
 event   = note | rest | measdef
@@ -284,15 +297,12 @@ score   = ([event], [decl], [setting])
 
 
 ; Returns a string representation of the given FOMUS data.
+; TODO clef staff perc metapart
 
+; setting | inst | part | mark | note | rest | measdef | score -> str
 fomus data = match data
     
     (name, value)             : setting = name ++ " " ++ fomus value
-                      
-    ; TODO clef
-    ; TODO staff
-    ; TODO perc
-    
     (id, templ, percs)        : inst = "inst <"
                                            ++ "id " ++ id
                                     ++ " " ++ "template "  ++ fomus templ 
@@ -303,29 +313,40 @@ fomus data = match data
                                     ++ " " ++ "inst " ++ fomus inst 
                                     ++ " " ++ fomus settings 
                                     ++ ">"
-                                    
-    ; TODO metapart
-                                    
-    (id, arg1, arg2)          : mark = "[" ++ (string id) ++ " " ++ (fomus arg1) ++ " " ++ (fomus arg2) ++ "]"
-    (id, arg)                 : mark = "[" ++ (string id) ++ " " ++ (fomus arg) ++ "]"
-    id                        : mark = "[" ++ (string id) ++ "]"
+    (id, x, y)                : mark = "[" ++ string id ++ " " ++ fomus x ++ " " ++ fomus y ++ "]"
+    (id, x)                   : mark = "[" ++ string id ++ " " ++ fomus x ++ "]"
+    id                        : mark = "[" ++ string id ++ "]"
     
-    ; TODO note
-    ; TODO rest
-    
-    (time, dur, settings)     : measdef = "time " ++ string time 
+    (time, dur, pitch, marks, settings) : note = (match time (x : () = "") (x = ("time " ++ string time)))
                                     ++ " " ++ "dur " ++ string dur
+                                    ++ " " ++ "pitch " ++ fomus pitch 
+                                    ++ " " ++ fomus marks 
+                                    ++ " " ++ fomus settings
+                                    ++ ";"
+    (dur, pitch, marks, settings) : note = "dur " ++ string dur
+                                    ++ " " ++ "pitch " ++ fomus pitch 
+                                    ++ " " ++ fomus marks 
+                                    ++ " " ++ fomus settings
+                                    ++ ";"
+    (pitch, marks, settings)  : note = "pitch " ++ fomus pitch 
+                                    ++ " " ++ fomus marks 
+                                    ++ " " ++ fomus settings
+                                    ++ ";"
+    
+    (time, dur, settings)     : measdef = "time " ++ fomus time 
+                                    ++ " " ++ "dur " ++ fomus dur
                                     ++ " " ++ "measure <" ++ fomus settings ++ ">"    
     
     (events, decls, settings) : score  = join "\n\n" [fomus settings, fomus decls, fomus events]
     
     event    : [event]      = join "\n" (map fomus event)
     decls    : [decl]       = join "\n" (map fomus decls)
+    marks    : [mark]       = join " " (map fomus settings)
     settings : [setting]    = join " " (map fomus settings)
-    xs       : [ _ ]        = fomusList xs
     x        : str          = fomusStr x
     x        : num          = string x
-    x        : ()           = ""
+    x        : ()           = ""      
+    xs       : [_]          = fomusList xs
 
 fomusList xs = "(" ++ join " " (map fomus xs) ++ ")"
 fomusStr x   = "\"" ++ x ++ "\""
@@ -346,13 +367,16 @@ lyFile  = FILE_LOCATION ++ FILE_NAME ++ ".ly"
 export text = do
     
     writeFile fmsFile text
-    run [ "fomus", fmsFile, "-o", xmlFile ]
-    ; run [ "fomus", fmsFile, "-o", lyFile ]
+    if PREVIEW
+        do 
+            run [ "fomus", fmsFile, "-o", lyFile ]
+        do
+            run [ "fomus", fmsFile, "-o", xmlFile ]
+            
+            ; Work around issue with FOMUS and clefs
+            print "adjusting fomus clefs..."
+            replaceFile xmlFile
+                [ "<sign>F</sign>", "<sign>C</sign>" ]
+                [ "<sign>F</sign><line>4</line>", "<sign>C</sign><line>3</line>" ]
 
-    ; Work around issue with FOMUS and clefs
-    print "adjusting fomus clefs..."
-    replaceFile xmlFile
-        [ "<sign>F</sign>", "<sign>C</sign>" ]
-        [ "<sign>F</sign><line>4</line>", "<sign>C</sign><line>3</line>" ]
-
-    run [ "open", "-a", SCORE_EDITOR, xmlFile ]
+            run [ "open", "-a", SCORE_EDITOR, xmlFile ]   
