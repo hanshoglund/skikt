@@ -64,16 +64,16 @@ percNote inst = match inst
 
 
 events _ =
-    let durs = (loop 1)
-        pitches = (60 .. 72)
-        dyns = (loop 1.0)
+    let durs    = (loop (4 + 1/3))
+        pitches = (cycle (60 .. 72)) 
+        dyns    = (palindrome (map (approx . ((flip (/)) 30)) (0 .. 30))) 
         notes = zip5 durs pitches dyns (loop []) (loop [])
         
         events = 
-            (map (setPart fl) . map (setMarks ["."]) . melody)
+            (map (setPart cl) . map (setMarks ["(.."]) . melody)
             notes   
         
-        take 30 (cycle events)
+        take 100 (cycle events)
 
 
 
