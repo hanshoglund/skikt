@@ -8,8 +8,6 @@
 
 module Hans.Music.Skikt
 
-; Setup
-
 scoreEditor = "/Applications/Sibelius 6.app"
 fileDir     = "/Users/hans/Documents/Musik/Skikt/output/"
 fileName    = "out"
@@ -19,36 +17,29 @@ fixClefs    = false
 info  = [ ("title",  "Skikt")
         , ("author", "Hans Hoglund 2011") ]
 
-
-; Parts
+fl   = ( "fl",   "flute",          [ ("abbr", "Fl.") ])
+ob   = ( "ob",   "oboe",           [ ("abbr", "Ob.") ])
+cl   = ( "cl",   "bflat-clarinet", [ ("abbr", "Kl.") ])
+bsn  = ( "bsn",  "bassoon",        [ ("abbr", "Fag.") ])
+hrn  = ( "hrn",  "horn",           [ ("abbr", "Hrn.") ])
+tpt  = ( "tpt",  "bflat-trumpet",  [ ("abbr", "Tpt.") ])
+tbn  = ( "tbn",  "tenor-trombone", [ ("abbr", "Tbn.") ])
+pno  = ( "pno",  "piano",          [ ("abbr", "Pno.") ])
+vib  = ( "vib",  "vibraphone",     [ ("abbr", "Vib.") ])
+crot = ( "crot", "vibraphone",     [ ("abbr", "Crot."), ("name", "Crotales") ])
+prc  = ( "perc", "perc1",          [ ("abbr", "Perc."), ("name", "Percussion") ])
+vl1  = ( "vl1",  "violin",         [ ("abbr", "Vl. I") ])
+vl2  = ( "vl2",  "violin",         [ ("abbr", "Vl. II") ])
+vla  = ( "vla",  "viola",          [ ("abbr", "Vla.") ])
+vc   = ( "vc",   "cello",          [ ("abbr", "Vc."), ("name", "Violoncello") ])
+db   = ( "db",   "bass",           [ ("abbr", "Kb.") ])
 
 insts = [ ("perc1", "percussion", ["snare-drum", "bass-drum", "crash-cymbal", "splash-cymbal"]) ]
+reson = ("reson", [(1, 1, "pno"), (1, 1, "vib")])
 
-winds = [ ("fl",   "flute",             [ ("abbr", "Fl.") ])
-        , ("ob",   "oboe",              [ ("abbr", "Ob.") ])
-        , ("cl",   "bflat-clarinet",    [ ("abbr", "Kl.") ])
-        , ("bsn",  "bassoon",           [ ("abbr", "Fag.") ]) ]
-brass = [ ("hrn",  "horn",              [ ("abbr", "Hrn.") ])
-        , ("tpt",  "bflat-trumpet",     [ ("abbr", "Tpt.") ])
-        , ("tbn",  "tenor-trombone",    [ ("abbr", "Tbn.") ]) ]
-percs = [ ("pno",  "piano",             [ ("abbr", "Pno.") ])
-        , ("vib",  "vibraphone",        [ ("abbr", "Vib.") ])
-        , ("crot", "vibraphone",        [ ("abbr", "Crot.")
-                                        , ("name", "Crotales") ])
-        , ("perc", "perc1",             [ ("abbr", "Perc.")
-                                        , ("name", "Percussion")]) ]
-strs  = [ ("vl1",  "violin",          [ ("abbr", "Vl. I") ])
-        , ("vl2",  "violin",            [ ("abbr", "Vl. II") ])
-        , ("vla",  "viola",             [ ("abbr", "Vla.") ])
-        , ("vc",   "cello",             [ ("abbr", "Vc.")
-                                        , ("name", "Violoncello") ])
-        , ("db",   "bass",              [ ("abbr", "Kb.") ]) ]
-
-fl = index 0 winds
-cl = index 2 winds
-
-parts = winds ++ brass ++ percs ++ strs
-decls = insts ++ parts
+parts = [fl, ob, cl, bsn, hrn, tpt, tbn, pno, vib, crot, prc, vl1, vl2, vla, vc, db]
+groups = [reson]
+decls = insts ++ parts ++ groups
 
 snareDrum = `snareDrum
 bassDrum  = `bassDrum
@@ -63,27 +54,49 @@ percNote inst = match inst
 
 
 
+
 events _ =
-    let durs    = (loop (4 + 1/3))
-        pitches = (cycle (60 .. 72)) 
-        dyns    = (palindrome (map (approx . ((flip (/)) 30)) (0 .. 30))) 
-        notes = zip5 durs pitches dyns (loop []) (loop [])
-        
+    ; let durs    = map (+ 1) (rands 8)
+    ;     pitches = map (+ 60) (rands 10)               
+    ;     arts    = unroll (pluck pick [["."], ["-"]])
+    ;     notes   = zip5 (loop (1/2)) pitches noise arts (loop [])
+    ;     rests   = zip4 (loop "+") durs (loop []) (loop []) 
+    ;     events  = map (setPart vl1) (melody (interl notes rests)) 
+
+    ; let durs    = map (+ 1) (rands 8)
+    ;     pitches = map (+ 45) (rands 30)
+    ;     notes   = zip5 (loop (1/2)) pitches (loop 0.5) (loop ["lv"]) (loop [])
+    ;     rests   = zip4 (loop "+") durs (loop []) (loop []) 
+    ;     events  = map (setPart reson) (melody (interl notes rests)) 
+
+    
+    let durs    = (loop (4 + 1/5))
+        pitches = (palindrome (60 .. 72)) 
+        dyns    = (cycle (map (approx . ((flip (/)) 4)) (0 .. 4))) 
+        notes   = zip5 durs pitches dyns (loop []) (loop [])
         events = 
-            (map (setPart cl) . map (setMarks ["(.."]) . melody)
+            (map (setPart pno) . map (setMarks ["-"]) . melody)
             notes   
         
-        take 100 (cycle events)
+        take 20 (cycle events)
 
 
 
 
+
+
+
+
+
+
+noise = unfold (fn (x) (randomDouble (), 0)) 0
 
 ; Main program
 
 main _ = (export . fomus) (events (), decls, info)
 test _ = fomus (events (), decls, info)
 dump _ = join "\n" (events ())
+
 
 
 
@@ -143,7 +156,9 @@ inst    = template
         | ( identifier, template, [perc], [staff] )
         | ( identifier, template, [perc], [staff], [setting] )
 
-part    = nil | (identifier, inst, [setting])
+partmap = (voice, voice, identifier)
+group   = (identifier, [partmap])
+part    = nil | group | (identifier, inst, [setting])
 
 mark    = markSign
         | ( markSign, (num | str) )
@@ -161,10 +176,11 @@ rest    = ( part,   voice,   time,    grace,   dur,     [mark],  [setting]      
 measure = ( time,   dur,     [setting]                                                       )
         | ( dur,    [setting]                                                                )
 
-decl    = part | inst | perc | staff | clef
+decl    = part | inst | group | perc | staff | clef
 event   = note | rest | measure
 
 score   = ( [event], [decl], [setting] )
+
 
 
 ; Utils
@@ -212,10 +228,12 @@ getDur e = match (expandEvent e)
 
 ;   note -> pitch
 getPitch = getNPitch . expandEvent
-getDyn   = getNDyn . expandEvent
+getDyn   = getNDyn   . expandEvent
 
-;   part -> id
-getId (id, _, _) : part = id
+;   part | group -> id
+getId x = match x
+    (id, _, _) : part  = id
+    (id, _)    : group = id
 
 ;   a -> event -> event    
 setTime  x e = (match e (_ : note = setNTime)  (_ : rest = setRTime) (_ : measure = setMTime)) x (expandEvent e)
@@ -257,13 +275,12 @@ eventType e = match e
 ; Returns a string representation of the given FOMUS data.
 ;    ( mark  |  decl  |  event  | setting | [mark] | [decl] | [event] | [setting] | score ) -> str
 fomus data = match data
-
     (id, x, y)                : mark = "[" ++ string id ++ " " ++ fomus x ++ " " ++ fomus y ++ "]"
     (id, x)                   : mark = "[" ++ string id ++ " " ++ fomus x ++ "]"
     id                        : mark = "[" ++ string id ++ "]"
     
     (name, value)             : setting = name ++ "=" ++ fomus value
-
+        
     (id, template, percs)     : inst = "inst <"
                                     ++ "id="        ++ id              ++ " " 
                                     ++ "template="  ++ fomus template  ++ " " 
@@ -272,6 +289,13 @@ fomus data = match data
                                     ++ "id="   ++ id         ++ " " 
                                     ++ "inst=" ++ fomus inst ++ " " 
                                     ++ fomus settings        ++ ">"
+    (id, partmaps)            : group = "metapart <"
+                                    ++ "id="    ++ string id          ++ " "
+                                    ++ "parts=" ++ fomusList partmaps ++ ">"
+    (from, to, id)            : partmap = "<"
+                                    ++ "from-voice=" ++ string from ++ " "
+                                    ++ "to-voice="   ++ string to   ++ " "
+                                    ++ "part="       ++  string id  ++ ">"                                    
     
     (part, voice, time, grace, dur, pitch, dyn, marks, settings) : note = ""
                                     ++ maybePart part   ++ " " 
@@ -307,6 +331,7 @@ fomus data = match data
     x        : num          = string x
     x        : ()           = ""
     xs       : [_]          = fomusList xs
+
 
 fomusList xs = "(" ++ join " " (map fomus xs) ++ ")"
 fomusStr x   = "\"" ++ x ++ "\""
