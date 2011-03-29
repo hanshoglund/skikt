@@ -14,32 +14,41 @@ fileName    = "out"
 preview     = false
 fixClefs    = false
 
-info  = [ ("title",  "Skikt")
-        , ("author", "Hans Hoglund 2011") ]
 
-fl   = ( "fl",   "flute",          [ ("abbr", "Fl.") ])
-ob   = ( "ob",   "oboe",           [ ("abbr", "Ob.") ])
-cl   = ( "cl",   "bflat-clarinet", [ ("abbr", "Kl.") ])
-bsn  = ( "bsn",  "bassoon",        [ ("abbr", "Fag.") ])
-hrn  = ( "hrn",  "horn",           [ ("abbr", "Hrn.") ])
-tpt  = ( "tpt",  "bflat-trumpet",  [ ("abbr", "Tpt.") ])
-tbn  = ( "tbn",  "tenor-trombone", [ ("abbr", "Tbn.") ])
-pno  = ( "pno",  "piano",          [ ("abbr", "Pno.") ])
-vib  = ( "vib",  "vibraphone",     [ ("abbr", "Vib.") ])
-crot = ( "crot", "vibraphone",     [ ("abbr", "Crot."), ("name", "Crotales") ])
-prc  = ( "perc", "perc1",          [ ("abbr", "Perc."), ("name", "Percussion") ])
-vl1  = ( "vl1",  "violin",         [ ("abbr", "Vl. I") ])
-vl2  = ( "vl2",  "violin",         [ ("abbr", "Vl. II") ])
-vla  = ( "vla",  "viola",          [ ("abbr", "Vla.") ])
-vc   = ( "vc",   "cello",          [ ("abbr", "Vc."), ("name", "Violoncello") ])
-db   = ( "db",   "bass",           [ ("abbr", "Kb.") ])
+info   = [ ("title",  "Skikt")
+         , ("author", "Hans Hoglund 2011") ]
 
-insts = [ ("perc1", "percussion", ["snare-drum", "bass-drum", "crash-cymbal", "splash-cymbal"]) ]
-reson = ("reson", [(1, 1, "pno"), (1, 1, "vib")])
 
-parts = [fl, ob, cl, bsn, hrn, tpt, tbn, pno, vib, crot, prc, vl1, vl2, vla, vc, db]
-groups = [reson]
-decls = insts ++ parts ++ groups
+insts  = [ ("perc1", "percussion",  [ "snare-drum"
+                                    , "bass-drum"
+                                    , "crash-cymbal"
+                                    , "splash-cymbal" ]) ]
+                                  
+fl     = ("fl",   "flute",          [ ("abbr", "Fl.") ])
+ob     = ("ob",   "oboe",           [ ("abbr", "Ob.") ])
+cl     = ("cl",   "bflat-clarinet", [ ("abbr", "Kl.") ])
+bsn    = ("bsn",  "bassoon",        [ ("abbr", "Fag.") ])
+hrn    = ("hrn",  "horn",           [ ("abbr", "Hrn.") ])
+tpt    = ("tpt",  "bflat-trumpet",  [ ("abbr", "Tpt.") ])
+tbn    = ("tbn",  "tenor-trombone", [ ("abbr", "Tbn.") ])
+pno    = ("pno",  "piano",          [ ("abbr", "Pno.") ])
+vib    = ("vib",  "vibraphone",     [ ("abbr", "Vib.") ])
+crot   = ("crot", "vibraphone",     [ ("abbr", "Crot.")
+                                  , ("name", "Crotales") ])
+prc    = ("perc", "perc1",          [ ("abbr", "Perc.")
+                                  , ("name", "Percussion") ])
+vl1    = ("vl1",  "violin",         [ ("abbr", "Vl. I") ])
+vl2    = ("vl2",  "violin",         [ ("abbr", "Vl. II") ])
+vla    = ("vla",  "viola",          [ ("abbr", "Vla.") ])
+vc     = ("vc",   "cello",          [ ("abbr", "Vc.")
+                                  , ("name", "Violoncello") ])
+db     = ("db",   "bass",           [ ("abbr", "Kb.") ])
+
+parts  = [fl, ob, cl, bsn, hrn, tpt, tbn, pno, vib, crot, prc, vl1, vl2, vla, vc, db]
+groups = []
+
+decls  = insts ++ parts ++ groups
+
 
 snareDrum = `snareDrum
 bassDrum  = `bassDrum
@@ -67,7 +76,7 @@ events _ =
     ;     pitches = map (+ 45) (rands 30)
     ;     notes   = zip5 (loop (1/2)) pitches (loop 0.5) (loop ["lv"]) (loop [])
     ;     rests   = zip4 (loop "+") durs (loop []) (loop []) 
-    ;     events  = map (setPart reson) (melody (interl notes rests)) 
+    ;     events  = map (setPart pno) (melody (interl notes rests)) 
 
     
     ; let durs    = (loop (4 + 1/3))
