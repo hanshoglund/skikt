@@ -44,7 +44,7 @@ vc     = ("vc",   "cello",          [ ("abbr", "Vc.")
                                   , ("name", "Violoncello") ])
 db     = ("db",   "bass",           [ ("abbr", "Kb.") ])
 
-parts  = [fl, ob, cl, bsn, hrn, tpt, tbn, pno, vib, crot, prc, vl1, vl2, vla, vc, db]
+parts  = [ fl, ob, cl, bsn, hrn, tpt, tbn, pno, vib, crot, prc, vl1, vl2, vla, vc, db ]
 groups = []
 
 decls  = insts ++ parts ++ groups
@@ -64,14 +64,14 @@ percNote inst = match inst
 
 
 
-events _ =
-    let durs    = map (+ 1) (rands 8)
-        pitches = map (+ 60) (rands 10)               
-        arts    = unroll (pluck pick [["."], ["-"]])
-        notes   = zip5 (loop (1/2)) pitches noise arts (loop [])
-        rests   = zip4 (loop "+") durs (loop []) (loop []) 
-        events  = map (setPart vl1) (melody (interl notes rests)) 
-
+; events _ =
+;     let durs    = map (+ 1) (rands 8)
+;         pitches = map (+ 60) (rands 10)               
+;         arts    = unroll (pluck pick [["."], ["-"]])
+;         notes   = zip5 (loop (1/2)) pitches noise arts (loop [])
+;         rests   = zip4 (loop "+") durs (loop []) (loop []) 
+;         events  = map (setPart vl1) (melody (interl notes rests)) 
+;              
     ; let durs    = map (+ 1) (rands 8)
     ;     pitches = map (+ 45) (rands 30)
     ;     notes   = zip5 (loop (1/2)) pitches (loop 0.5) (loop ["lv"]) (loop [])
@@ -87,7 +87,7 @@ events _ =
     ;         (map (setPart pno) . map (setMarks ["-"]) . melody)
     ;         notes   
         
-        take 60 (cycle events)
+        ; take 60 (cycle events)
 
 
 
@@ -117,86 +117,96 @@ dump _ = join "\n" (events ())
 
 ; The workflow is to create a data structure representing a score
 ; and pass it to the fomus function. This function generates a
-; text on a format understood by FOMUS, which may be written to
-; a fms file.
+; text on a format understood by Fomus, which may be written to
+; a fomus text file.
 
-; Fomus allows many fields to be "unset", assuming the previous value
-; We represent this by nil
+; The basic types can be represented by standard numbers and strings
+; We use nil to represent missing values wherever Fomus allows it
 
-time       = nil | prec | "+"
-grace      = nil | prec | "+"
-dur        = nil | prec | "+" | "-"
-pitch      = nil | prec
-dyn        = nil | double
-voice      = nil | int  | [int]
+time     = nil | prec | "+"
+grace    = nil | prec | "+"
+dur      = nil | prec | "+" | "-"
+pitch    = nil | prec
+dyn      = nil | double
+voice    = nil | int  | [int]
+fomusId  = str
 
-identifier = str
-setting    = (str, (str | num | [str] | [num]))
+; A basic string-value mapping
 
-markSign   = "(.." | "*" | "+" | "-" | "." | ".((." | ".(." | "..)" | "..))" | "..<"
-           | "..>" | "." | "dash)" | "..dash))" | "..dot)" | "..dot))" | "..grace)"
-           | "..ped" | "..tup" | "..x!" | "..x^" | "..x_" | ".<." | ".>." | ".dash((."
-           | ".dash(." | ".dot((." | ".dot(." | ".grace(." | ".ped." | ".x!." | ".x^."
-           | ".x_." | "/" | "/." | "0" | "<.." | ">" | ">.." | "^" | "arco" | "arp"
-           | "arp^" | "arp_" | "artharm-base" | "artharm-sounding" | "artharm-touched"
-           | "bellsup" | "break<" | "break>" | "breath" | "breath<" | "breath>"
-           | "cuivre" | "damp" | "dash((.." | "dash(.." | "dot((.." | "dot(.."
-           | "downbow" | "dyn" | "etouf" | "f" | "ferm" | "ferm-long" | "ferm-short"
-           | "ferm-verylong" | "ff" | "fff" | "ffff" | "fffz" | "ffz" | "flaut" | "flt"
-           | "fz" | "gliss<" | "gliss>" | "grace(.." | "leg" | "legno" | "longtr"
-           | "longtr2" | "lv" | "mf" | "moltoleg" | "moltovib" | "mp" | "mute"
-           | "natharm-sounding" | "natharm-string" | "natharm-touched" | "nonleg"
-           | "nonvib" | "o" | "ord" | "p" | "ped.." | "pizz" | "pont" | "port<"
-           | "port>" | "pp" | "ppp" | "pppp" | "ppppp" | "pppppp" | "punta" | "rf"
-           | "rfz" | "ric" | "salt" | "sf" | "sff" | "sfff" | "sfffz" | "sffz" | "sfz"
-           | "slap" | "snap" | "snappizz" | "spic" | "sul" | "table" | "tall" | "tasto"
-           | "tempo" | "trem" | "trem2" | "tup.." | "unmute" | "upbow" | "vib" | "x"
-           | "x!" | "x!.." | "x^" | "x^.." | "x_" | "x_.." | "~" | (`-) | (`.) | (`!) | (`+)
+setting  = (str, (str | num | [str] | [num]))
 
-template   = identifier
+; A mark is a value with optional arguments
+; We use strings to represent the types for convenience
 
-clef    = [setting]
-staff   = ([clef], [setting])
+markType = "(.." | "*" | "+" | "-" | "." | ".((." | ".(." | "..)" | "..))" | "..<"
+         | "..>" | "." | "dash)" | "..dash))" | "..dot)" | "..dot))" | "..grace)"
+         | "..ped" | "..tup" | "..x!" | "..x^" | "..x_" | ".<." | ".>." | ".dash((."
+         | ".dash(." | ".dot((." | ".dot(." | ".grace(." | ".ped." | ".x!." | ".x^."
+         | ".x_." | "/" | "/." | "0" | "<.." | ">" | ">.." | "^" | "arco" | "arp"
+         | "arp^" | "arp_" | "artharm-base" | "artharm-sounding" | "artharm-touched"
+         | "bellsup" | "break<" | "break>" | "breath" | "breath<" | "breath>"
+         | "cuivre" | "damp" | "dash((.." | "dash(.." | "dot((.." | "dot(.."
+         | "downbow" | "dyn" | "etouf" | "f" | "ferm" | "ferm-long" | "ferm-short"
+         | "ferm-verylong" | "ff" | "fff" | "ffff" | "fffz" | "ffz" | "flaut" | "flt"
+         | "fz" | "gliss<" | "gliss>" | "grace(.." | "leg" | "legno" | "longtr"
+         | "longtr2" | "lv" | "mf" | "moltoleg" | "moltovib" | "mp" | "mute"
+         | "natharm-sounding" | "natharm-string" | "natharm-touched" | "nonleg"
+         | "nonvib" | "o" | "ord" | "p" | "ped.." | "pizz" | "pont" | "port<"
+         | "port>" | "pp" | "ppp" | "pppp" | "ppppp" | "pppppp" | "punta" | "rf"
+         | "rfz" | "ric" | "salt" | "sf" | "sff" | "sfff" | "sfffz" | "sffz" | "sfz"
+         | "slap" | "snap" | "snappizz" | "spic" | "sul" | "table" | "tall" | "tasto"
+         | "tempo" | "trem" | "trem2" | "tup.." | "unmute" | "upbow" | "vib" | "x"
+         | "x!" | "x!.." | "x^" | "x^.." | "x_" | "x_.." | "~" | (`-) | (`.) | (`!) | (`+)
+mark     = markType
+         | (markType, (num | str))
+         | (markType, (num | str), (num | str))
 
-perc    = template
-        | (identifier, [setting])
-inst    = template
-        | (identifier, template, [perc])
-        | (identifier, template, [perc], [staff])
-        | (identifier, template, [perc], [staff], [setting])
+; Declarative structures
+; Object that may be referenced have identities, represented by fomusId
 
-partmap = (voice, voice, identifier)
-group   = (identifier, [partmap])
-part    = (identifier, inst, [setting]) 
-        | group 
-        | nil
+clef     = [setting]
+staff    = ([clef], [setting])
+percInst = fomusId
+         | (fomusId, [setting])
+template = fomusId
+inst     = fomusId
+         | (fomusId, template, [percInst])
+         | (fomusId, template, [percInst], [staff])
+         | (fomusId, template, [percInst], [staff], [setting])
 
-mark    = markSign
-        | (markSign, (num | str))
-        | (markSign, (num | str), (num | str))
+; Here we actually need recursive datatypes...
 
-; We define some sparse forms of the events for convenience
-
-note    = (part,   voice,   time,    grace,   dur,     pitch,   dyn,     [mark],  [setting])
-        | (part,   voice,   time,    dur,     pitch,   dyn,     [mark],  [setting])
-        | (time,   dur,     pitch,   dyn,     [mark],  [setting])
-        | (dur,    pitch,   dyn,     [mark],  [setting])
-        | (pitch,  dyn,     [mark],  [setting])
-rest    = (part,   voice,   time,    grace,   dur,     [mark],  [setting])
-        | (time,   dur,     [mark],  [setting])
-measure = (time,   dur,     [setting])
-        | (dur,    [setting])
-
-decl    = part | inst | group | perc | staff | clef
-event   = note | rest | measure
-
-score   = ( [event], [decl], [setting] )
+fromVoice = voice
+toVoice   = voice
+partMap  = (fromVoice, toVoice, fomusId)
+metaPart = (fomusId, [partMap])
+part     = (fomusId, inst, [setting]) 
+         | metaPart 
+         | nil
 
 
+; Events are notes, rests or measures
 
-; Utils
+; We define some "sparse" cases which may be converted to "expanded" cases using
+; the expandEvent function
 
-; Expands a sparse event to its complete form, substituting nil for all missing slots 
+note     = (part,   voice,   time,    grace,   dur,     pitch,   dyn,     [mark],  [setting])
+         | (part,   voice,   time,    dur,     pitch,   dyn,     [mark],  [setting])
+         | (time,   dur,     pitch,   dyn,     [mark],  [setting])
+         | (dur,    pitch,   dyn,     [mark],  [setting])
+         | (pitch,  dyn,     [mark],  [setting])
+rest     = (part,   voice,   time,    grace,   dur,     [mark],  [setting])
+         | (time,   dur,     [mark],  [setting])
+meas     = (time,   dur,     [setting])
+         | (dur,    [setting])
+        
+decl     = part | inst | metaPart | percInst | staff | clef
+event    = note | rest | meas
+
+score    = ([event], [decl], [setting])
+
+; Expands an event to its complete form, substituting nil for
+; eventual missing slots 
 ;   event -> event
 expandEvent e : event = match e       
     (r, v, t, g, d, p, n, m, s)  : note    = e
@@ -206,104 +216,124 @@ expandEvent e : event = match e
     (p, n:dyn, m, s)             : note    = ((), (), (), (), (), p, n, m, s)
     (p, v, t, g, d, m, s)        : rest    = e
     (t, d, m, s)                 : rest    = ((), (), t,  (), d,  m, s)
-    (t, d, s)                    : measure = e
-    (d, s)                       : measure = ((), d, s)
+    (t, d, s)                    : meas = e
+    (d, s)                       : meas = ((), d, s)
 
-getNoteTime      (_, _, t, _, _, _, _, _, _) = t
-getNoteDur       (_, _, _, _, d, _, _, _, _) = d
-getNotePitch     (_, _, _, _, _, p, _, _, _) = p
-getNoteDyn       (_, _, _, _, _, _, n, _, _) = n
-getRestTime      (_, _, t, _, _, _, _)       = t
-getRestDur       (_, _, _, _, d, _, _)       = d
-getMeasureTime   (t, _, _)                   = t
-getMeasureDur    (_, d, _)                   = d
-setNotePart    r (_, v, t, g, d, p, n, m, s) = (r, v, t, g, d, p, n, m, s)
-setNoteVoice   v (r, _, t, g, d, p, n, m, s) = (r, v, t, g, d, p, n, m, s)
-setNoteTime    t (r, v, _, g, d, p, n, m, s) = (r, v, t, g, d, p, n, m, s)
-setNoteGrace   g (r, v, t, _, d, p, n, m, s) = (r, v, t, g, d, p, n, m, s)
-setNoteDur     d (r, v, t, g, _, p, n, m, s) = (r, v, t, g, d, p, n, m, s)
-setNotePitch   p (r, v, t, g, d, _, n, m, s) = (r, v, t, g, d, p, n, m, s)
-setNoteDyn     n (r, v, t, g, d, p, _, m, s) = (r, v, t, g, d, p, n, m, s)
-setNoteMarks   m (r, v, t, g, d, p, n, _, s) = (r, v, t, g, d, p, n, m, s)
-setRestPart    r (_, v, t, g, d, m, s)       = (r, v, t, g, d, m, s)
-setRestVoice   v (r, _, t, g, d, m, s)       = (r, v, t, g, d, m, s)
-setRestTime    t (r, v, _, g, d, m, s)       = (r, v, t, g, d, m, s)
-setRestGrace   g (r, v, t, _, d, m, s)       = (r, v, t, g, d, m, s)
-setRestDur     d (r, v, t, g, _, m, s)       = (r, v, t, g, d, m, s)
-setRestMarks   m (r, v, t, g, d, _, s)       = (r, v, t, g, d, m, s)
-setMeasureTime t (_, d, s)                   = (t, d, s)
-setMeasureDur  d (t, _, s)                   = (t, d, s)
+getNoteTime  (_, _, t, _, _, _, _, _, _) = t
+getNoteGrace (_, _, _, g, _, _, _, _, _) = g
+getNoteDur   (_, _, _, _, d, _, _, _, _) = d
+getNotePitch (_, _, _, _, _, p, _, _, _) = p
+getNoteDyn   (_, _, _, _, _, _, n, _, _) = n
+getRestTime  (_, _, t, _, _, _, _)       = t
+getRestGrace (_, _, _, g, _, _, _)       = g
+getRestDur   (_, _, _, _, d, _, _)       = d
+getMeasTime  (t, _, _)                   = t
+getMeasDur   (_, d, _)                   = d
 
+setNotePart  r (_, v, t, g, d, p, n, m, s) = (r, v, t, g, d, p, n, m, s)
+setNoteVoice v (r, _, t, g, d, p, n, m, s) = (r, v, t, g, d, p, n, m, s)
+setNoteTime  t (r, v, _, g, d, p, n, m, s) = (r, v, t, g, d, p, n, m, s)
+setNoteGrace g (r, v, t, _, d, p, n, m, s) = (r, v, t, g, d, p, n, m, s)
+setNoteDur   d (r, v, t, g, _, p, n, m, s) = (r, v, t, g, d, p, n, m, s)
+setNotePitch p (r, v, t, g, d, _, n, m, s) = (r, v, t, g, d, p, n, m, s)
+setNoteDyn   n (r, v, t, g, d, p, _, m, s) = (r, v, t, g, d, p, n, m, s)
+setNoteMarks m (r, v, t, g, d, p, n, _, s) = (r, v, t, g, d, p, n, m, s)
+setRestPart  r (_, v, t, g, d, m, s)       = (r, v, t, g, d, m, s)
+setRestVoice v (r, _, t, g, d, m, s)       = (r, v, t, g, d, m, s)
+setRestTime  t (r, v, _, g, d, m, s)       = (r, v, t, g, d, m, s)
+setRestGrace g (r, v, t, _, d, m, s)       = (r, v, t, g, d, m, s)
+setRestDur   d (r, v, t, g, _, m, s)       = (r, v, t, g, d, m, s)
+setRestMarks m (r, v, t, g, d, _, s)       = (r, v, t, g, d, m, s)
+setMeasTime  t (_, d, s)                   = (t, d, s)
+setMeasDur   d (t, _, s)                   = (t, d, s)
+
+
+; Getters and setters
 
 ;   event -> dur
 getTime e = match e
-    e : note    = (getNoteTime . expandEvent) e
-    e : rest    = (getRestTime . expandEvent) e
-    e : measure = (getMeasureTime . expandEvent) e
+    e : note = (getNoteTime . expandEvent) e
+    e : rest = (getRestTime . expandEvent) e
+    e : meas = (getMeasTime . expandEvent) e
 getDur e = match e
-    e : note    = (getNoteDur . expandEvent) e
-    e : rest    = (getRestDur . expandEvent) e
-    e : measure = (getMeasureDur . expandEvent) e
+    e : note = (getNoteDur . expandEvent) e
+    e : rest = (getRestDur . expandEvent) e
+    e : meas = (getMeasDur . expandEvent) e
+getGrace e = match e
+    e : note = (getNoteGrace . expandEvent) e
+    e : rest = (getRestGrace . expandEvent) e
 
 ;   note -> pitch
 getPitch = getNotePitch . expandEvent
 getDyn   = getNoteDyn   . expandEvent
 
-;   part | group -> id
-getId x = match x
+;   part | metaPart -> id
+getName x = match x
     (id, _, _) : part  = id
-    (id, _)    : group = id
+    (id, _)    : metaPart = id
+    ; inst TODO 
+    ; percInst TODO
 
 ;   a -> event -> event    
-setTime  x e =
-    let set = match e (_ : note = setNoteTime) (_ : rest = setRestTime) (_ : measure = setMeasureTime)
-        set x (expandEvent e)
-setDur   x e = 
-    let set = match e (_ : note = setNoteDur)  (_ : rest = setRestDur)  (_ : measure = setMeasureDur)
-        set x (expandEvent e)
-setPart  x e = 
-    let set = match e (_ : note = setNotePart)  (_ : rest = setRestPart)
-        set x (expandEvent e)
-setVoice x e = 
-    let set = match e (_ : note = setNoteVoice) (_ : rest = setRestVoice)
-        set x (expandEvent e)
-setGrace x e = 
-    let set = match e (_ : note = setNoteGrace) (_ : rest = setRestGrace)
-        set x (expandEvent e)
-setMarks x e = 
-    let set = match e (_ : note = setNoteMarks) (_ : rest = setRestMarks)
-        set x (expandEvent e)
+setTime  x e = match e
+    e : note = setNoteTime x (expandEvent e)
+    e : rest = setRestTime x (expandEvent e)
+    e : meas = setMeasTime x (expandEvent e)
+setDur   x e = match e
+    e : note = setNoteDur x (expandEvent e)
+    e : rest = setRestDur x (expandEvent e)
+    e : meas = setMeasDur x (expandEvent e)
+setPart  x e = match e
+    e : note = setNotePart x (expandEvent e)
+    e : rest = setRestPart x (expandEvent e)
+    e : meas = setMeasPart x (expandEvent e)
+setVoice x e = match e
+    e : note = setNoteVoice x (expandEvent e)
+    e : rest = setRestVoice x (expandEvent e)
+setGrace x e = match e
+    e : note = setNoteGrace x (expandEvent e)
+    e : rest = setRestGrace x (expandEvent e)
+setMarks x e = match e
+    e : note = setNoteMarks x (expandEvent e)
+    e : rest = setRestMarks x (expandEvent e)
 setPitch x e = setNotePitch x (expandEvent e)
 setDyn   x e = setNoteDyn   x (expandEvent e)
 
+ 
 
-;   [event] -> [event]
-melody = map (setTime "+")
-chord  = map (setTime nil)
+; It is convenient
 
-;   dur -> [event] -> [event]
-offset d = prepend ("+", d, [], [])
+isAbsolute e : event = getTime e != "+" && getDur e == "+"
+isRelative e : event = getTime e == "+" && getDur e != "+"
+
+
+
+; ;   [event] -> [event]
+; melody = map (setTime "+")
+; chord  = map (setTime nil)
+; 
+; ;   dur -> [event] -> [event]
+; offset d = prepend ("+", d, [], [])
+
 
 
 ; Simple inspectors for the repl
     
 declType d = match d
-    d : part    = `part
-    d : inst    = `inst
-    d : perc    = `perc
-    d : staff   = `staff
-    d : clef    = `clef
+    d : part     = `part
+    d : inst     = `inst
+    d : percInst = `percInst
+    d : staff    = `staff
+    d : clef     = `clef
 
 eventType e = match e
-    e : note    = `note
-    e : rest    = `rest
-    e : measure = `measure
+    e : note     = `note
+    e : rest     = `rest
+    e : meas  = `meas
 
 
-
-; Export
-
-; Returns a string representation of the given FOMUS data.
+; Main export function
+; Converts the given data structure to a text format understood by Fomus.
 ;    ( mark  |  decl  |  event  | setting | [mark] | [decl] | [event] | [setting] | score ) -> str
 fomus data = match data
     (id, x, y)                : mark = "[" ++ string id ++ " " ++ fomus x ++ " " ++ fomus y ++ "]"
@@ -312,23 +342,23 @@ fomus data = match data
     
     (name, value)             : setting = name ++ "=" ++ fomus value
         
-    (id, template, percs)     : inst = "inst <"
+    (id, template, percInsts) : inst = "inst <"
                                     ++ "id="        ++ id              ++ " " 
                                     ++ "template="  ++ fomus template  ++ " " 
-                                    ++ "percinsts=" ++ fomusList percs ++ ">"
+                                    ++ "percinsts=" ++ fomusList percInsts ++ ">"
     (id, inst, settings)      : part = "part <"
                                     ++ "id="   ++ id         ++ " " 
                                     ++ "inst=" ++ fomus inst ++ " " 
                                     ++ fomus settings        ++ ">"
-    (id, partmaps)            : group = "metapart <"
+    (id, partMaps)            : metaPart = "metapart <"
                                     ++ "id="    ++ string id          ++ " "
-                                    ++ "parts=" ++ fomusList partmaps ++ ">"
-    (from, to, id)            : partmap = "<"
+                                    ++ "parts=" ++ fomusList partMaps ++ ">"
+    (from, to, id)            : partMap = "<"
                                     ++ "from-voice=" ++ string from ++ " "
                                     ++ "to-voice="   ++ string to   ++ " "
                                     ++ "part="       ++  string id  ++ ">"                                    
     
-    (part, voice, time, grace, dur, pitch, dyn, marks, settings) : note = ""
+    (part, voice, time, grace, dur, pitch, dyn, marks, settings) : note = "note "
                                     ++ maybePart part   ++ " " 
                                     ++ maybeVoice voice ++ " " 
                                     ++ maybeTime time   ++ " " 
@@ -346,10 +376,10 @@ fomus data = match data
                                     ++ maybeDur dur     ++ " " 
                                     ++ fomus marks      ++ " " 
                                     ++ fomus settings   ++ ";"
-    (time, dur, settings)     : measure = ""
+    (time, dur, settings)     : meas = ""
                                     ++ maybeTime time   ++ " "
                                     ++ maybeDur  dur    ++ " "
-                                    ++ "measure <" ++ fomus settings ++ ">"
+                                    ++ "meas <" ++ fomus settings ++ ">"
     event                     : event = (fomus . expandEvent) event
 
     (events, decls, settings) : score = join "\n\n" [fomus settings, fomus decls, fomus events]
@@ -367,7 +397,7 @@ fomus data = match data
 fomusList xs = "(" ++ join " " (map fomus xs) ++ ")"
 fomusStr x   = "\"" ++ x ++ "\""
 
-maybePart x    = match x (x : () = "") (x = "part="    ++ getId x)
+maybePart x    = match x (x : () = "") (x = "part="    ++ getName x)
 maybeVoice x   = match x (x : () = "") (x = "voice="   ++ string x)
 maybeTime x    = match x (x : () = "") (x = "time="    ++ string x)
 maybeGrace x   = match x (x : () = "") (x = "grace="   ++ string x)
