@@ -120,9 +120,6 @@ dump _ = join "\n" (events ())
 ; text on a format understood by Fomus, which may be written to
 ; a fomus text file.
 
-; The basic types can be represented by standard numbers and strings
-; We use nil to represent missing values wherever Fomus allows it
-
 time     = nil | prec | "+"
 grace    = nil | prec | "+"
 dur      = nil | prec | "+" | "-"
@@ -131,12 +128,7 @@ dyn      = nil | double
 voice    = nil | int  | [int]
 fomusId  = str
 
-; A basic string-value mapping
-
 setting  = (str, (str | num | [str] | [num]))
-
-; A mark is a value with optional arguments
-; We use strings to represent the types for convenience
 
 markType = "(.." | "*" | "+" | "-" | "." | ".((." | ".(." | "..)" | "..))" | "..<"
          | "..>" | "." | "dash)" | "..dash))" | "..dot)" | "..dot))" | "..grace)"
@@ -161,9 +153,6 @@ mark     = markType
          | (markType, (num | str))
          | (markType, (num | str), (num | str))
 
-; Declarative structures
-; Object that may be referenced have identities, represented by fomusId
-
 clef     = [setting]
 staff    = ([clef], [setting])
 percInst = fomusId
@@ -173,22 +162,14 @@ inst     = fomusId
          | (fomusId, template, [percInst])
          | (fomusId, template, [percInst], [staff])
          | (fomusId, template, [percInst], [staff], [setting])
-
-; Here we actually need recursive datatypes...
-
 fromVoice = voice
-toVoice   = voice
+toVoice  = voice
 partMap  = (fromVoice, toVoice, fomusId)
 metaPart = (fomusId, [partMap])
 part     = (fomusId, inst, [setting]) 
          | metaPart 
          | nil
 
-
-; Events are notes, rests or measures
-
-; We define some "sparse" cases which may be converted to "expanded" cases using
-; the expandEvent function
 
 note     = (part,   voice,   time,    grace,   dur,     pitch,   dyn,     [mark],  [setting])
          | (part,   voice,   time,    dur,     pitch,   dyn,     [mark],  [setting])
@@ -205,9 +186,9 @@ event    = note | rest | meas
 
 score    = ([event], [decl], [setting])
 
-; Expands an event to its complete form, substituting nil for
-; eventual missing slots 
+; Expands an event to its complete form, substituting nil for eventual missing slots 
 ;   event -> event
+
 expandEvent e : event = match e       
     (r, v, t, g, d, p, n, m, s)  : note    = e
     (r, v, t, d, p, n:dyn, m, s) : note    = (r,  v,  t,  (), d,  p, n, m, s)
@@ -246,9 +227,6 @@ setRestDur   d (r, v, t, g, _, m, s)       = (r, v, t, g, d, m, s)
 setRestMarks m (r, v, t, g, d, _, s)       = (r, v, t, g, d, m, s)
 setMeasTime  t (_, d, s)                   = (t, d, s)
 setMeasDur   d (t, _, s)                   = (t, d, s)
-
-
-; Getters and setters
 
 ;   event -> dur
 getTime e = match e
@@ -299,12 +277,62 @@ setMarks x e = match e
 setPitch x e = setNotePitch x (expandEvent e)
 setDyn   x e = setNoteDyn   x (expandEvent e)
 
- 
 
-; It is convenient
+; Simple event streams
 
-isAbsolute e : event = getTime e != "+" && getDur e == "+"
-isRelative e : event = getTime e == "+" && getDur e != "+"
+notes times durs pitches = zip6 times durs pitches (loop 0.5) (loop []) (loop [])
+rests times durs         = zip4 times durs (loop []) (loop [])
+
+
+; Normalization
+
+;   event -> bool
+isAbsolute e = let t = getTime e
+                   d  = getDur  e
+                   (t != "+" && t != ()) && d == "+"
+
+isRelative e = let t = getTime e
+                   d  = getDur  e
+                   (t == "+" || t == ()) && (d != () && d != "+")
+
+isExplicit e = let t = getTime e
+                   d  = getDur  e
+                   (t != () && t != "+") && (d != () && d != "+")
+
+;   [event] -> bool
+isInRelativeForm xs = match xs
+    _ : ()  = true
+    (x, xs) = isExplicit x && (every . map isRelative) xs
+
+isInAbsoluteForm xs = match xs
+    _ : ()  = true
+    xs      = isExplicit (last xs) && (every . map isAbsolute) (init xs)
+
+isInExplicitForm = every . map isExplicit     
+isNormalized xs  = isInRelativeForm xs || (isInAbsoluteForm xs || isInExplicitForm xs)
+
+; Examples:
+;       isInAbsoluteForm (rests [0,1,2] ["+","+",0]) => true
+;       isInRelativeForm (rests [0,"+","+"] [1,1,1]) => true
+;       isInRelativeForm (rests [0,[],[]] [1,1,1])   => true
+;       isInExplicitForm (rests [0,1,2] [1,1,1])     => true
+
+
+; sequence xs ys  = match (xs, ys)
+;     (xs, _ : []) = xs
+;     (_ : [], ys) = ys
+;     _            = if (isInRelativeForm ys)
+;                       xs ++ (prepend (setDur (getDur (head ys) + duration xs) (head ys)) (tail ys))
+;                       ; else
+;                       if (isInAbsoluteForm ys)
+;                           ; TODO     
+
+parallell xs ys = match (xs, ys)
+    (xs, _ : []) = xs
+    (_ : [], ys) = ys
+    _            = if (isNormalized ys)
+                      xs ++ ys
+                      error "not normalized"
 
 
 
@@ -335,6 +363,7 @@ eventType e = match e
 ; Main export function
 ; Converts the given data structure to a text format understood by Fomus.
 ;    ( mark  |  decl  |  event  | setting | [mark] | [decl] | [event] | [setting] | score ) -> str
+
 fomus data = match data
     (id, x, y)                : mark = "[" ++ string id ++ " " ++ fomus x ++ " " ++ fomus y ++ "]"
     (id, x)                   : mark = "[" ++ string id ++ " " ++ fomus x ++ "]"
