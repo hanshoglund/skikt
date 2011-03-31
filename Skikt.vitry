@@ -46,7 +46,7 @@ parts  = [ fl, ob, cl, bsn
          , hrn, tpt, tbn
          , pno, vib, crot, prc
          , vl1, vl2, vla, vc, db ]
-decls  = insts ++ parts ++ groups
+decls  = insts ++ parts
 
 snareDrum = `snareDrum
 bassDrum  = `bassDrum
@@ -89,12 +89,17 @@ percNote inst = match inst
         ; take 60 (cycle events)
 
 
+events _ = 
+    do  foo = melody (loop 1) (cycle (60 .. 72))
+        bar = chords (loop 4) (map major (map (+ 60) (rands 10)))
 
+        events = parallel (take 12 bar) (take 12 foo)
+        events = sequence events events
+        events = (map (setPart cl) events)
+        events = (map (setVoice [1, 2, 3, 4]) events)
+        ; take 50 events
 
-
-
-
-
+major root = [root, root + 4, root + 7]
 
 
 
@@ -107,6 +112,8 @@ noise = unfold (fn (x) (randomDouble (), 0)) 0
 
 ; Main program
 
+printEvents _ = do force (map print (events ()))
+                ()
 main _ = (export . fomus) (events (), decls, info)
 test _ = fomus (events (), decls, info)
 dump _ = join "\n" (events ())
@@ -175,29 +182,26 @@ setting  = (str, (str | num | [str] | [num]))
 
 clef     = [setting]
 staff    = ([clef],  [setting])
+template = fomusId
 percInst = fomusId
          | (fomusId, [setting])
-template = fomusId
 inst     = fomusId
-         | (fomusId, template, [percInst])
-         | (fomusId, template, [percInst], [staff])
          | (fomusId, template, [percInst], [staff], [setting])
-fromVoice = voice
-toVoice  = voice
-partMap  = (fromVoice, toVoice, fomusId)
+         | (fomusId, template, [percInst])
+partMap  = (voice, voice, fomusId)
 metaPart = (fomusId, [partMap])
-part     = (fomusId, inst, [setting]) 
-         | metaPart 
-         | nil
-note     = (part,   voice,   time,    grace,   dur,     pitch,   dyn,     [mark],  [setting])
-         | (part,   voice,   time,    dur,     pitch,   dyn,     [mark],  [setting])
-         | (time,   dur,     pitch,   dyn,     [mark],  [setting])
-         | (dur,    pitch,   dyn,     [mark],  [setting])
-         | (pitch,  dyn,     [mark],  [setting])
-rest     = (part,   voice,   time,    grace,   dur,     [mark],  [setting])
-         | (time,   dur,     [mark],  [setting])
-meas     = (time,   dur,     [setting])
-         | (dur,    [setting])
+part     = nil
+         | metaPart
+         | (fomusId, inst, [setting]) 
+note     = (part, voice, time, grace, dur, pitch, dyn, [mark], [setting])
+         | (part, voice, time, dur, pitch, dyn, [mark], [setting])
+         | (time, dur, pitch, dyn, [mark], [setting])
+         | (dur, pitch, dyn, [mark], [setting])
+         | (pitch, dyn, [mark], [setting])
+rest     = (part, voice, time, grace, dur, [mark], [setting])
+         | (time, dur, [mark], [setting])
+meas     = (time, dur, [setting])
+         | (dur, [setting])
         
 decl     = part | inst | metaPart | percInst | staff | clef
 event    = note | rest | meas
@@ -215,14 +219,21 @@ expandEvent e : event = match e
     (t, d, m, s)                 : rest = ((), (), t,  (), d,  m, s)
     (t, d, s)                    : meas = e
     (d, s)                       : meas = ((), d, s)
+
+getNotePart    (r, _, _, _, _, _, _, _, _) = r
+getNoteVoice   (_, v, _, _, _, _, _, _, _) = v
 getNoteTime    (_, _, t, _, _, _, _, _, _) = t
 getNoteGrace   (_, _, _, g, _, _, _, _, _) = g
 getNoteDur     (_, _, _, _, d, _, _, _, _) = d
 getNotePitch   (_, _, _, _, _, p, _, _, _) = p
 getNoteDyn     (_, _, _, _, _, _, n, _, _) = n
+getNoteMarks   (_, _, _, _, _, _, _, m, _) = m
+getRestPart    (r, _, _, _, _, _, _)       = r
+getRestVoice   (_, v, _, _, _, _, _)       = v
 getRestTime    (_, _, t, _, _, _, _)       = t
 getRestGrace   (_, _, _, g, _, _, _)       = g
 getRestDur     (_, _, _, _, d, _, _)       = d
+getRestMarks   (_, _, _, _, _, m, _)       = m
 getMeasTime    (t, _, _)                   = t
 getMeasDur     (_, d, _)                   = d
 setNotePart  r (_, v, t, g, d, p, n, m, s) = (r, v, t, g, d, p, n, m, s)
@@ -251,9 +262,20 @@ getDur e = match e
     e : note = (getNoteDur . expandEvent) e
     e : rest = (getRestDur . expandEvent) e
     e : meas = (getMeasDur . expandEvent) e
+getPart e = match e
+    e : note = (getNotePart . expandEvent) e
+    e : rest = (getRestPart . expandEvent) e
+getVoice e = match e
+    e : note = (getNoteVoice . expandEvent) e
+    e : rest = (getRestVoice . expandEvent) e
 getGrace e = match e
     e : note = (getNoteGrace . expandEvent) e
     e : rest = (getRestGrace . expandEvent) e
+getMarks e = match e
+    e : note = (getNoteMarks . expandEvent) e
+    e : rest = (getRestMarks . expandEvent) e
+
+getActualDur x = if (getTime x == ()) 0 else (getDur x)
 
 ; note -> pitch
 getPitch = getNotePitch . expandEvent
@@ -264,89 +286,116 @@ getName x = match x
     (id, _, _) : part  = id
     (id, _)    : metaPart = id
 
+
 ; a -> event -> event    
-setTime  x e = match e
+setTime   x e = match e
     e : note = setNoteTime  x (expandEvent e)
     e : rest = setRestTime  x (expandEvent e)
     e : meas = setMeasTime  x (expandEvent e)
-setDur   x e = match e
+setDur    x e = match e
     e : note = setNoteDur   x (expandEvent e)
     e : rest = setRestDur   x (expandEvent e)
     e : meas = setMeasDur   x (expandEvent e)
-setPart  x e = match e
+setPart   x e = match e
     e : note = setNotePart  x (expandEvent e)
     e : rest = setRestPart  x (expandEvent e)
-    e : meas = setMeasPart  x (expandEvent e)
-setVoice x e = match e
+setVoice  x e = match e
     e : note = setNoteVoice x (expandEvent e)
     e : rest = setRestVoice x (expandEvent e)
-setGrace x e = match e
+setGrace  x e = match e
     e : note = setNoteGrace x (expandEvent e)
     e : rest = setRestGrace x (expandEvent e)
-setMarks x e = match e
+setMarks  x e = match e
     e : note = setNoteMarks x (expandEvent e)
     e : rest = setRestMarks x (expandEvent e)
-setPitch x e = setNotePitch x (expandEvent e)
-setDyn   x e = setNoteDyn   x (expandEvent e)
+setPitch  x e = setNotePitch x (expandEvent e)
+setDyn    x e = setNoteDyn   x (expandEvent e)
 
-notes times durs pitches = zip6 times durs pitches (loop 0.5) (loop []) (loop [])
-rests times durs         = zip4 times durs (loop []) (loop [])
+withTime  f x = setTime  (f (getTime  x)) x
+withDur   f x = setDur   (f (getDur   x)) x
+withPart  f x = setPart  (f (getPart  x)) x
+withVoice f x = setVoice (f (getVoice x)) x
+withGrace f x = setGrace (f (getGrace x)) x
+withMarks f x = setMarks (f (getMarks x)) x
+withPitch f x = setPitch (f (getPitch x)) x
+withDyn   f x = setDyn   (f (getDyn   x)) x
 
 
-;   event -> bool
+; event -> bool
 isAbsolute e = (getTime e != "+" && getTime e != ())  && getDur e == "+"
 isRelative e = (getTime e == "+" || getTime e == ())  && (getDur e != () && getDur e != "+")
 isExplicit e = (getTime e != ()  && getTime e != "+") && (getDur e != () && getDur e != "+")
 
-;   [event] -> bool
+; [event] -> bool
 isInRelativeForm xs = match xs
-    _ : ()  = true
-    (x, xs) = isExplicit x && (every . map isRelative) xs
+    _ : []  = true
+    (x, xs) = isExplicit x && (all isRelative) xs
 isInAbsoluteForm xs = match xs
-    _ : ()  = true
-    xs      = isExplicit (last xs) && (every . map isAbsolute) (init xs)
-isInExplicitForm = every . map isExplicit     
+    _ : []  = true
+    xs      = isExplicit (last xs) && (all isAbsolute) (init xs)
+isInExplicitForm = all isExplicit     
+
 isNormalized xs  = isInRelativeForm xs || (isInAbsoluteForm xs || isInExplicitForm xs)
 
+relative = `relative
+absolute = `absolute
+explicit = `explicit
+normalizationForm = relative | absolute | explicit   
+
+getForm events = if (isInRelativeForm events)
+                     `relative
+                     if (isInAbsoluteForm events)
+                         `absolute
+                         if (isInExplicitForm events)
+                             `explicit
+                             error (errorString events ++ " is not normalized") 
 ; Examples:
-;       isInAbsoluteForm (rests [0,1,2] ["+","+",0]) => true
-;       isInRelativeForm (rests [0,"+","+"] [1,1,1]) => true
-;       isInRelativeForm (rests [0,[],[]] [1,1,1])   => true
-;       isInExplicitForm (rests [0,1,2] [1,1,1])     => true
- 
- 
+;       getForm (rests [0,1,2] ["+","+",0]) => absolute
+;       getForm (rests [0,"+","+"] [1,1,1]) => relative
+;       getForm (rests [0,[],[]] [1,1,1])   => relative
+;       getForm (rests [0,1,2] [1,1,1])     => explicit
 
 
+; [time] -> [dur] -> [pitch] -> [note]
+notes times durs pitches = zip6 times durs pitches (loop 0.5) (loop []) (loop [])
 
-; sequence xs ys  = match (xs, ys)
-;     (xs, _ : []) = xs
-;     (_ : [], ys) = ys
-;     _            = if (isInRelativeForm ys)
-;                       xs ++ (prepend (setDur (getDur (head ys) + duration xs) (head ys)) (tail ys))
-;                       ; else
-;                       if (isInAbsoluteForm ys)
-;                           ; TODO
-;                           ; else
-;                           if (isInExplicitForm ys)
-;                                 ; TODO
-;                                 ; else
-;                                 error (string ys ++ "is not normalized")      
-
-parallell xs ys = match (xs, ys)
-    (xs, _ : []) = xs
-    (_ : [], ys) = ys
-    _            = if (isNormalized ys)
-                      xs ++ ys
-                      error (string ys ++ "is not normalized")
+; [time] -> [dur] -> [note]
+rests times durs         = zip4 times durs (loop []) (loop [])
 
 
+; The melody, chord and chords functions generates homophonic structures in relative form
 
-; ;   [event] -> [event]
-; melody = map (setTime "+")
-; chord  = map (setTime nil)
-; 
-; ;   dur -> [event] -> [event]
-; offset d = prepend ("+", d, [], [])
+; [dur] -> [pitch] -> [note]
+melody durs pitches = match (durs, pitches)
+    _ : [], _        = []
+    _,      _ : []   = []
+    (d, ds), (p, ps) = prepend (0, d, p, 0.5, [], []) (delay notes (loop "+") ds ps)
+
+chordT time dur pitches = match pitches
+    _ : []  = []
+    (p, ps) = prepend (time, dur, p, 0.5, [], []) (delay notes (loop nil) (loop dur) ps)
+
+chordsT time1 time2 durs pitches = match (durs, pitches)
+    _ : [], _        = []
+    _,      _ : []   = []
+    (d, ds), (p, ps) = (delay chordT time1 d p ++ chordsT time2 time2 ds ps) 
+
+; dur -> [pitch] -> [note]
+chord = chordT 0
+
+; [dur] -> [[pitch]] -> [note]
+chords = chordsT 0 "+"
+                                                                                                
+; time -> [event] -> [event]
+offset time = map (withTime (fn (x) match x (x : prec = x + time) (_ = x))) 
+
+; [event] -> duration
+; FIXME if time is reset, look at it
+duration = sum . (map getActualDur)
+
+; [event] -> [event]
+sequence  xs ys = xs ++ offset (duration xs) ys 
+parallel  xs ys = xs ++ ys
 
 
 
@@ -432,13 +481,13 @@ fomusList xs = "(" ++ join " " (map fomus xs) ++ ")"
 fomusStr x   = "\"" ++ x ++ "\""
 
 maybePart x    = match x (x : () = "") (x = "part="    ++ getName x)
-maybeVoice x   = match x (x : () = "") (x = "voice="   ++ string x)
+maybeVoice x   = match x (x : () = "") (x = "voice="   ++ listOrString x)
 maybeTime x    = match x (x : () = "") (x = "time="    ++ string x)
 maybeGrace x   = match x (x : () = "") (x = "grace="   ++ string x)
 maybeDur x     = match x (x : () = "") (x = "dur="     ++ string x)
 maybePitch x   = match x (x : () = "") (x = "pitch="   ++ string x)
 maybeDynamic x = match x (x : () = "") (x = "dynamic=" ++ string x)
-
+listOrString x = match x (x : [_] = fomusList x) (_ = string x)
 
 
 ; =============================================================================
