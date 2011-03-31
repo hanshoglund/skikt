@@ -320,40 +320,27 @@ withMarks f x = setMarks (f (getMarks x)) x
 withPitch f x = setPitch (f (getPitch x)) x
 withDyn   f x = setDyn   (f (getDyn   x)) x
 
+assureTimeAndDur t nt d nd event = 
+    match (getTime event, getDur event)
+        (_ : nt, _     ) = false
+        (_,      _ : nd) = false
+        (_ : t,  _ : d ) = true
+        _                = false
 
 ; event -> bool
-isAbsolute e = (getTime e != "+" && getTime e != ())  && getDur e == "+"
-isRelative e = (getTime e == "+" || getTime e == ())  && (getDur e != () && getDur e != "+")
-isExplicit e = (getTime e != ()  && getTime e != "+") && (getDur e != () && getDur e != "+")
+; FIXME
+isAbsoluteEvent = assureTimeAndDur _          ("+" | ()) "+" _
+isRelativeEvent = assureTimeAndDur ("+" | ()) _          _   ("+" | ())
+isExplicitEvent = assureTimeAndDur _          ("+" | ()) _   ("+" | ())
 
 ; [event] -> bool
-isInRelativeForm xs = match xs
+isRelative xs = match xs
     _ : []  = true
-    (x, xs) = isExplicit x && (all isRelative) xs
-isInAbsoluteForm xs = match xs
+    (x, xs) = isExplicitEvent x && (all isRelativeEvent) xs
+isAbsolute xs = match xs
     _ : []  = true
-    xs      = isExplicit (last xs) && (all isAbsolute) (init xs)
-isInExplicitForm = all isExplicit     
-
-isNormalized xs  = isInRelativeForm xs || (isInAbsoluteForm xs || isInExplicitForm xs)
-
-relative = `relative
-absolute = `absolute
-explicit = `explicit
-normalizationForm = relative | absolute | explicit   
-
-getForm events = if (isInRelativeForm events)
-                     `relative
-                     if (isInAbsoluteForm events)
-                         `absolute
-                         if (isInExplicitForm events)
-                             `explicit
-                             error (errorString events ++ " is not normalized") 
-; Examples:
-;       getForm (rests [0,1,2] ["+","+",0]) => absolute
-;       getForm (rests [0,"+","+"] [1,1,1]) => relative
-;       getForm (rests [0,[],[]] [1,1,1])   => relative
-;       getForm (rests [0,1,2] [1,1,1])     => explicit
+    xs      = isExplicitEvent (last xs) && (all isAbsoluteEvent) (init xs)
+isExplicit = all isExplicitEvent
 
 
 ; [time] -> [dur] -> [pitch] -> [note]
@@ -394,8 +381,10 @@ offset time = map (withTime (fn (x) match x (x : prec = x + time) (_ = x)))
 duration = sum . (map getActualDur)
 
 ; [event] -> [event]
+; FIXME see duration
 sequence  xs ys = xs ++ offset (duration xs) ys 
 parallel  xs ys = xs ++ ys
+
 
 
 
