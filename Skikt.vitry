@@ -90,14 +90,14 @@ percNote inst = match inst
 
 
 events _ = 
-    do  foo = take 3 (melody (loop 1) (cycle (60 .. 72))) 
-        bar = take 3 (chords (loop 1) (map major (map (+ 60) (rands 10)))) 
+    do  foo = take 120 (melody (loop 1) (cycle (60 .. 72))) 
+        bar = take 120 (chords (loop 4) (map major (map (+ 60) (rands 10)))) 
 
-        ; events = foo
-        events = parallel foo bar
-        ; events = sequence events events
-        events = (map (setPart cl) events)
-        events = (map (setVoice [1, 2, 3, 4]) events)
+        ; events = bar
+        ; events = parallel foo bar
+        events = parallel (sequence foo bar) (sequence bar foo)
+        events = (mapMusic (setPart pno) events)
+        events = (mapMusic (setVoice (1 .. 3)) events)
         events
 
 major root = [root, root + 4, root + 7]
@@ -207,7 +207,11 @@ meas     = (time, dur, [setting])
 decl     = part | inst | metaPart | percInst | staff | clef
 event    = note | rest | meas
 
-score    = ([event], [decl], [setting])
+music    = [event]
+         | (`par, _, _)
+         | (`seq, _, _)
+
+score    = (music, [decl], [setting])
 
 
 expandEvent e : event = match e       
@@ -397,28 +401,29 @@ chord = chordT 0
 ; [dur] -> [[pitch]] -> [note]
 chords = chordsT 0 "+"
 
+; music -> music -> music
+sequence a b = (`seq, a, b)
+parallel a b = (`par, a, b)
 
-                                                                                                
 ; time -> [event] -> [event]
-offset time = map (withTime (fn (x) match x (x : prec = x + time) (_ = x))) 
+offset time = map (withTime (fn (x) match x (x : prec = x + time) (_ = x)))
 
-; [event] -> duration
-duration xs = match xs
-    _ : ()  = 0
-    (x, xs) = let section = findIndex (matches prec) (map getTime xs)
-                  offset  = getTime x + getActualDur x
-                  if (section < 0)
-                      offset + sum (map getActualDur xs)
-                      offset + sum (map getActualDur (take section (prepend x xs)))
-                      
-; [event] -> [event]
-sequence  xs ys = let dx = duration xs
-                      dy = duration ys
-                      prepend (0, dx + dy, [], []) xx ++ (offset dx ys)
+; music -> dur
+duration m = match m
+    (_ : `seq, a, b) = (+) (duration a) (duration b)
+    (_ : `par, a, b) = max (duration a) (duration b)
+    m : [event]      = (getTime . head) m + (sum . map getActualDur) m
+    
+; music -> [event]
+musicToEvents m = match m
+    (_ : `seq, a, b) = musicToEvents a ++ offset (duration a) (musicToEvents b)
+    (_ : `par, a, b) = musicToEvents a ++ musicToEvents b 
+    m : [event]     = m
 
-parallel  xs ys = let dx = duration xs
-                      dy = duration ys
-                      prepend (0, dx + dy, [], []) xs ++ ys
+mapMusic f m = match m
+    (_ : `seq, a, b) = (`seq, mapMusic f a, mapMusic f b)
+    (_ : `par, a, b) = (`par, mapMusic f a, mapMusic f b) 
+    m : [event]     = map f m 
 
 
 ; Simple inspectors for the repl
@@ -493,6 +498,7 @@ fomus data = match data
     marks    : [mark]       = join " " (map fomus marks)
     event    : [event]      = join "\n" (map fomus event)
     decls    : [decl]       = join "\n" (map fomus decls)
+    music    : music        = (fomus . musicToEvents) music
     x        : str          = fomusStr x
     x        : num          = string x
     x        : ()           = ""
