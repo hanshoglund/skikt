@@ -90,14 +90,15 @@ percNote inst = match inst
 
 
 events _ = 
-    do  foo = melody (loop 1) (cycle (60 .. 72))
-        bar = chords (loop 4) (map major (map (+ 60) (rands 10)))
+    do  foo = take 3 (melody (loop 1) (cycle (60 .. 72))) 
+        bar = take 3 (chords (loop 1) (map major (map (+ 60) (rands 10)))) 
 
-        events = parallel (take 12 bar) (take 12 foo)
-        events = sequence events events
+        ; events = foo
+        events = parallel foo bar
+        ; events = sequence events events
         events = (map (setPart cl) events)
         events = (map (setVoice [1, 2, 3, 4]) events)
-        ; take 50 events
+        events
 
 major root = [root, root + 4, root + 7]
 
@@ -275,6 +276,7 @@ getMarks e = match e
     e : note = (getNoteMarks . expandEvent) e
     e : rest = (getRestMarks . expandEvent) e
 
+; event -> prec | "+"
 getActualDur x = if (getTime x == ()) 0 else (getDur x)
 
 ; note -> pitch
@@ -285,7 +287,6 @@ getDyn   = getNoteDyn   . expandEvent
 getName x = match x
     (id, _, _) : part  = id
     (id, _)    : metaPart = id
-
 
 ; a -> event -> event    
 setTime   x e = match e
@@ -320,6 +321,25 @@ withMarks f x = setMarks (f (getMarks x)) x
 withPitch f x = setPitch (f (getPitch x)) x
 withDyn   f x = setDyn   (f (getDyn   x)) x
 
+
+; Time and duration is context-sensitive in Fomus. This means that we
+; can get unexpected results when assembling events from various sources.
+
+; To counter the problem we introduce normal-form event lists which are
+; unaffected by surrounding events
+;
+; Normal form events lists take three shapes:
+;   - Relative, where 
+;       - durations are given explitly
+;       - the first time value is a number 
+;       - all other time values are "+" or nil
+;   - Absolute, where 
+;       - time values are given explitly
+;       - the last duration is a number 
+;       - and all other durations are "+" or nil
+;   - Explicit, where 
+;       - all time values and durations are given explitly
+
 assureTimeAndDur t nt d nd event = 
     match (getTime event, getDur event)
         (_ : nt, _     ) = false
@@ -328,20 +348,23 @@ assureTimeAndDur t nt d nd event =
         _                = false
 
 ; event -> bool
-; FIXME
-isAbsoluteEvent = assureTimeAndDur _          ("+" | ()) "+" _
-isRelativeEvent = assureTimeAndDur ("+" | ()) _          _   ("+" | ())
-isExplicitEvent = assureTimeAndDur _          ("+" | ()) _   ("+" | ())
+isRelativeEvent = assureTimeAndDur ("+" | ()) {}         _          ("+" | ())
+isAbsoluteEvent = assureTimeAndDur _          ("+" | ()) ("+" | ()) {}
+isExplicitEvent = assureTimeAndDur _          ("+" | ()) _          ("+" | ())
 
 ; [event] -> bool
 isRelative xs = match xs
-    _ : []  = true
-    (x, xs) = isExplicitEvent x && (all isRelativeEvent) xs
+    _ : [] = true
+    xs     = isExplicitEvent (head xs) && (all isRelativeEvent) (tail xs)
 isAbsolute xs = match xs
-    _ : []  = true
-    xs      = isExplicitEvent (last xs) && (all isAbsoluteEvent) (init xs)
+    _ : [] = true
+    xs     = isExplicitEvent (last xs) && (all isAbsoluteEvent) (init xs)
 isExplicit = all isExplicitEvent
 
+isInNormalForm xs = isRelative xs || isAbsolute xs || isExplicit xs
+
+
+; Basic event lists builders
 
 ; [time] -> [dur] -> [pitch] -> [note]
 notes times durs pitches = zip6 times durs pitches (loop 0.5) (loop []) (loop [])
@@ -350,7 +373,8 @@ notes times durs pitches = zip6 times durs pitches (loop 0.5) (loop []) (loop []
 rests times durs         = zip4 times durs (loop []) (loop [])
 
 
-; The melody, chord and chords functions generates homophonic structures in relative form
+
+; The melody, chord and chords functions generates homophonic music in relative form
 
 ; [dur] -> [pitch] -> [note]
 melody durs pitches = match (durs, pitches)
@@ -372,20 +396,29 @@ chord = chordT 0
 
 ; [dur] -> [[pitch]] -> [note]
 chords = chordsT 0 "+"
+
+
                                                                                                 
 ; time -> [event] -> [event]
 offset time = map (withTime (fn (x) match x (x : prec = x + time) (_ = x))) 
 
 ; [event] -> duration
-; FIXME if time is reset, look at it
-duration = sum . (map getActualDur)
-
+duration xs = match xs
+    _ : ()  = 0
+    (x, xs) = let section = findIndex (matches prec) (map getTime xs)
+                  offset  = getTime x + getActualDur x
+                  if (section < 0)
+                      offset + sum (map getActualDur xs)
+                      offset + sum (map getActualDur (take section (prepend x xs)))
+                      
 ; [event] -> [event]
-; FIXME see duration
-sequence  xs ys = xs ++ offset (duration xs) ys 
-parallel  xs ys = xs ++ ys
+sequence  xs ys = let dx = duration xs
+                      dy = duration ys
+                      prepend (0, dx + dy, [], []) xx ++ (offset dx ys)
 
-
+parallel  xs ys = let dx = duration xs
+                      dy = duration ys
+                      prepend (0, dx + dy, [], []) xs ++ ys
 
 
 ; Simple inspectors for the repl
