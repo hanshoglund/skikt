@@ -11,7 +11,7 @@ module Hans.Music.Skikt
 scoreEditor = "/Applications/Sibelius 6.app"
 fileDir     = "/Users/hans/Documents/Musik/Skikt/output/"
 fileName    = "out"
-preview     = false
+preview     = true
 fixClefs    = false
 
 info   = [ ("title",  "Skikt")
@@ -91,14 +91,14 @@ percNote inst = match inst
 
 events _ = 
     do  foo = legato ((tri . map (* 4) . map recip) (take 10 (geom 2 1))) (60 .. 72) 
-        ;foo = take 12 (melody (loop 1) (cycle (60 .. 72))) 
+        foo = restPhrase [">"] ["."] ["."] (loopTimes 12 1) (loop 1) (cycle (60 .. 72)) 
         ; bar = take 12 (chords (loop 4) (map major (map (+ 60) (rands 10))))
         bar = chordsArp (1 .. 4) (loop (major 60))
                    
-        events = foldr sequence [] (loopTimes 3 bar)
+        events = foldr sequence [] (loopTimes 3 foo)
         ; events = take 20 (loop foo)
         events = (mapMusic (setPart pno) events)
-        events = (mapMusic (setVoice (1 .. 3)) events)
+        events = (mapMusic (setVoice 1) events)
         events
 
 major root = [root, root + 4, root + 7]
@@ -117,15 +117,14 @@ major root = [root, root + 4, root + 7]
 
 ; Utils
 
+
+
 noise = unfold (fn (x) (randomDouble (), 0)) 0
+
+
+
 loopTimes n = take n . loop
                              
-FUNCTION_CANVAS = class "vitry.runtime.util.FunctionCanvas"
-COMPONENT       = class "java.awt.Component"
-FRAME           = class "java.awt.Frame"
-DRAW_POLYLINE   = method (class "java.awt.Graphics") "drawPolyline" 
-                      [class "[I", class "[I", class "int"]
-window          = ref ()
 
 ; Returns a list of approximating the values of the given list
 ; by partitioning it and calculating the mean of each sublist.
@@ -133,23 +132,49 @@ window          = ref ()
 ;   [prec] -> [prec] | [real] -> [real]
 sample n = map mean . partitionInto n
 
-; plotf xs = plot (0 .. 700) 
+; Displays a simple plot of the given list of numbers in a window
+; Precise numbers may be of any magnitude
+; Real numbers are assumed to be in the range 0.0 < x < 1.0
+;   [prec] | [real] -> ()
+plot xs = match xs
+    _ : [prec] = let n = length xs
+                     m = largest xs
+                     ys = map (* (200/m)) xs
+                     plotMatrix (0 .. n) ys
+    _ : [real] = let n = length xs
+                     ys = map (* 200.0) xs
+                     plotMatrix (0 .. n) ys
+                     
 
-plot xs ys = do oldWindow = (get window)
-                if (oldWindow != ())
-                    (method FRAME "dispose" []) oldWindow
-                    ()
-                canvas = new FUNCTION_CANVAS [paintPlot xs ys]
-                frame  = new FRAME ["Plot"]
-                (method FRAME "add" [COMPONENT]) frame canvas
-                (method FRAME "setSize" [`int, `int]) frame (INT_PRIM 700) (INT_PRIM 200)
-                (method FRAME "show" []) frame
-                set window frame
+FUNCTION_CANVAS = class "vitry.runtime.util.FunctionCanvas"
+COMPONENT       = class "java.awt.Component"
+FRAME           = class "java.awt.Frame"
+DRAW_POLYLINE   = method (class "java.awt.Graphics") "drawPolyline" [class "[I", class "[I", class "int"]
+FRAME_ADD       = method FRAME "add" [COMPONENT]
+FRAME_SET_SIZE  = method FRAME "setSize" [`int, `int]
+FRAME_SHOW      = method FRAME "show" []
+FRAME_DISPOSE   = method FRAME "dispose" []
 
-paintPlot xs ys g = let DRAW_POLYLINE g 
-                            iarray xs
-                            iarray (map ((+ (largest ys)) . negate) ys) 
-                            INT_PRIM (min (length xs) (length ys))
+window          = ref ()
+
+plotMatrix xs ys = 
+    do  oldWindow = (get window)
+        if (oldWindow != ()) 
+            FRAME_DISPOSE oldWindow
+            ()
+        canvas = new FUNCTION_CANVAS [paintPlot xs ys]
+        frame  = new FRAME ["Vitry"]
+        FRAME_ADD frame canvas
+        FRAME_SET_SIZE frame (INT_PRIM 700) (INT_PRIM 230)
+        FRAME_SHOW frame
+        set window frame
+        ()
+
+paintPlot xs ys g = 
+    let DRAW_POLYLINE g 
+        iarray xs
+        iarray (map ((+ (largest ys)) . negate) ys) 
+        INT_PRIM (min (length xs) (length ys))     
 
 
 
@@ -477,16 +502,16 @@ chordsArpUp          = chordsPhrase ["arp^"] ["arp^"] ["arp^"]
 chordsArpDown        = chordsPhrase ["arp_"] ["arp_"] ["arp_"]
 
 
-
-
 ; [dur] -> [dur] -> [pitch] -> [event]
-restMelody durs restDurs pitchs = 
+restMelody durs restDurs pitches = 
     interl (melody durs pitches) (rests (loop "+") restDurs)
 
 ; [mark] -> [mark] -> [mark] -> [dur] -> [dur] -> [pitch] -> [event]
 restPhrase attack sustain release durs restDurs pitches = 
-    interl (attack sustain release durs pitches) (rests (loop "+") restDurs)
+    interl (phrase attack sustain release durs pitches) (rests (loop "+") restDurs)
 
+
+; The music type allow us to sequence events in an abstract fashion
 
 ; music -> music -> music
 sequence a b = (`seq, a, b)
@@ -511,6 +536,7 @@ mapMusic f m = match m
     (_ : `seq, a, b) = (`seq, mapMusic f a, mapMusic f b)
     (_ : `par, a, b) = (`par, mapMusic f a, mapMusic f b) 
     m : [event]      = map f m 
+
 
 
 ; Simple inspectors for the repl
