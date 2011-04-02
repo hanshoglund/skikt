@@ -63,45 +63,36 @@ percNote inst = match inst
 
 
 
-; events _ =
-;     let durs    = map (+ 1) (rands 8)
-;         pitches = map (+ 60) (rands 10)               
-;         arts    = unroll (pluck pick [["."], ["-"]])
-;         notes   = zip5 (loop (1/2)) pitches noise arts (loop [])
-;         rests   = zip4 (loop "+") durs (loop []) (loop []) 
-;         events  = map (setPart vl1) (melody (interl notes rests)) 
-;              
-    ; let durs    = map (+ 1) (rands 8)
-    ;     pitches = map (+ 45) (rands 30)
-    ;     notes   = zip5 (loop (1/2)) pitches (loop 0.5) (loop ["lv"]) (loop [])
-    ;     rests   = zip4 (loop "+") durs (loop []) (loop []) 
-    ;     events  = map (setPart pno) (melody (interl notes rests)) 
-
-    
-    ; let durs    = (loop (4 + 1/3))
-    ;     pitches = (palindrome (60 .. 72)) 
-    ;     dyns    = (cycle (map (approx . ((flip (/)) 4)) (0 .. 4))) 
-    ;     notes   = zip5 durs pitches dyns (loop []) (loop [])
-    ;     events = 
-    ;         (map (setPart pno) . map (setMarks ["-"]) . melody)
-    ;         notes   
-        
-        ; take 60 (cycle events)
 
 
-events _ = 
-    do  foo = legato ((tri . map (* 4) . map recip) (take 10 (geom 2 1))) (60 .. 72) 
-        foo = restPhrase [">"] ["."] ["."] (loopTimes 12 1) (loop 1) (cycle (60 .. 72)) 
-        ; bar = take 12 (chords (loop 4) (map major (map (+ 60) (rands 10))))
-        bar = chordsArp (1 .. 4) (loop (major 60))
-                   
-        events = foldr sequence [] (loopTimes 3 foo)
-        ; events = take 20 (loop foo)
-        events = (mapMusic (setPart pno) events)
-        events = (mapMusic (setVoice 1) events)
-        events
 
-major root = [root, root + 4, root + 7]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+; events _ = 
+;     do  foo = legato ((tri . map (* 4) . map recip) (take 10 (geom 2 1))) (60 .. 72) 
+;         foo = restPhrase [">"] ["."] ["."] (loopTimes 12 1) (loop 1) (cycle (60 .. 72)) 
+;         ; bar = take 12 (chords (loop 4) (map major (map (+ 60) (rands 10))))
+;         bar = chordsArp (1 .. 4) (loop (major 60))
+;                    
+;         events = foldr sequence [] (loopTimes 3 foo)
+;         ; events = take 20 (loop foo)
+;         events = (mapMusic (setPart pno) events)
+;         events = (mapMusic (setVoice 1) events)
+;         events
+; 
+; major root = [root, root + 4, root + 7]    
 
 
 
@@ -119,8 +110,11 @@ major root = [root, root + 4, root + 7]
 
 
 
-noise = unfold (fn (x) (randomDouble (), 0)) 0
-
+noise   = unfold (fn (x) (randomDouble () * 2.0 - 1.0, 0)) 0
+line n  = cycle (map (approx . flip (/) n) (0 .. n))
+gen f x = map f x
+sinG n  = map (sin . (* 2.0 * pi)) (line n)
+cosG n  = map (cos . (* 2.0 * pi)) (line n)
 
 
 loopTimes n = take n . loop
@@ -134,15 +128,15 @@ sample n = map mean . partitionInto n
 
 ; Displays a simple plot of the given list of numbers in a window
 ; Precise numbers may be of any magnitude
-; Real numbers are assumed to be in the range 0.0 < x < 1.0
+; Real numbers are assumed to be in the range -1.0 < x < 1.0
 ;   [prec] | [real] -> ()
 plot xs = match xs
     _ : [prec] = let n = length xs
                      m = largest xs
-                     ys = map (* (200/m)) xs
+                     ys = map (flip (/) m . (* 200)) xs
                      plotMatrix (0 .. n) ys
     _ : [real] = let n = length xs
-                     ys = map (* 200.0) xs
+                     ys = map ((+ 1.0) . (* 0.5) . (* 200.0)) xs
                      plotMatrix (0 .. n) ys
                      
 
@@ -159,10 +153,8 @@ window          = ref ()
 
 plotMatrix xs ys = 
     do  oldWindow = (get window)
-        if (oldWindow != ()) 
-            FRAME_DISPOSE oldWindow
-            ()
-        canvas = new FUNCTION_CANVAS [paintPlot xs ys]
+        if (oldWindow != ()) (FRAME_DISPOSE oldWindow) else ()
+        canvas = new FUNCTION_CANVAS [paintPlot xs (map ((+ (largest ys)) . negate) ys) (min (length xs) (length ys))]
         frame  = new FRAME ["Vitry"]
         FRAME_ADD frame canvas
         FRAME_SET_SIZE frame (INT_PRIM 700) (INT_PRIM 230)
@@ -170,11 +162,11 @@ plotMatrix xs ys =
         set window frame
         ()
 
-paintPlot xs ys g = 
-    let DRAW_POLYLINE g 
+paintPlot xs ys n g = 
+    DRAW_POLYLINE g 
         iarray xs
-        iarray (map ((+ (largest ys)) . negate) ys) 
-        INT_PRIM (min (length xs) (length ys))     
+        iarray ys 
+        INT_PRIM n     
 
 
 
