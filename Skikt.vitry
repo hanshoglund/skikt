@@ -14,201 +14,6 @@ fileName    = "out"
 preview     = false
 fixClefs    = false
 
-info   = [ ("title",  "Skikt")
-         , ("author", "Hans Hoglund 2011") ]
-
-insts  = [ ("perc1", "percussion",  [ "snare-drum"
-                                    , "bass-drum"
-                                    , "crash-cymbal"
-                                    , "splash-cymbal" ]) ]
-                                  
-fl     = ("fl",   "flute",          [ ("abbr", "Fl.") ])
-ob     = ("ob",   "oboe",           [ ("abbr", "Ob.") ])
-cl     = ("cl",   "bflat-clarinet", [ ("abbr", "Kl.") ])
-bsn    = ("bsn",  "bassoon",        [ ("abbr", "Fag.") ])
-hrn    = ("hrn",  "horn",           [ ("abbr", "Hrn.") ])
-tpt    = ("tpt",  "bflat-trumpet",  [ ("abbr", "Tpt.") ])
-tbn    = ("tbn",  "tenor-trombone", [ ("abbr", "Tbn.") ])
-pno    = ("pno",  "piano",          [ ("abbr", "Pno.") ])
-vib    = ("vib",  "vibraphone",     [ ("abbr", "Vib.") ])
-crot   = ("crot", "vibraphone",     [ ("abbr", "Crot.")
-                                  , ("name", "Crotales") ])
-prc    = ("perc", "perc1",          [ ("abbr", "Perc.")
-                                  , ("name", "Percussion") ])
-vl1    = ("vl1",  "violin",         [ ("abbr", "Vl. I") ])
-vl2    = ("vl2",  "violin",         [ ("abbr", "Vl. II") ])
-vla    = ("vla",  "viola",          [ ("abbr", "Vla.") ])
-vc     = ("vc",   "cello",          [ ("abbr", "Vc.")
-                                  , ("name", "Violoncello") ])
-db     = ("db",   "bass",           [ ("abbr", "Kb.") ])
-
-parts  = [ fl, ob, cl, bsn
-         , hrn, tpt, tbn
-         , pno, vib, crot, prc
-         , vl1, vl2, vla, vc, db ]
-decls  = insts ++ parts
-
-snareDrum = `snareDrum
-bassDrum  = `bassDrum
-smallCymbal = `smallCymbal 
-largeCymbal = `largeCymbal
-
-percNote inst = match inst
-    x : bassDrum    = 65
-    x : snareDrum   = 72
-    x : smallCymbal = 76
-    x : largeCymbal = 79
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
- 
-
-
-
-
-
-
-maxPitch = prec
-minPitch = prec
-density  = prec
-resonance = double
-saturation = double
-
-layer = [(maxPitch, minPitch, density, saturation)]
-
-
-
-
-
-
-
-
-
-
-events _ = 
-    do  foo = chordsPhrase [">"] ["."] ["."] (loopTimes 12 1) ((cycle . map major) (60 .. 72)) 
-        ; bar = take 12 (chords (loop 4) (map major (map (+ 60) (rands 10))))
-        bar = chordsArp (1 .. 4) (loop (major 60))
-                   
-        events = foldr sequence [] (loopTimes 3 foo)
-        ; events = take 20 (loop foo)
-        events = (mapMusic (setPart pno) events)
-        events = (mapMusic (setVoice 1) events)
-        events
-
-major root = [root, root + 4, root + 7] 
-
-; Utils
-
-
-
-noise   = unfold (fn (x) (randomDouble () * 2.0 - 1.0, 0)) 0
-line n  = cycle (map (approx . flip (/) n) (0 .. n))
-sinG = map (sin . (* 2.0 * pi))
-cosG = map (cos . (* 2.0 * pi))
-a = ref ()
-b = ref ()
-c = ref ()
-d = ref ()
-
-loopTimes n = take n . loop
-                             
-
-; Returns a list of approximating the values of the given list
-; by partitioning it and calculating the mean of each sublist.
-; Returns the original list if its length is >= n
-;   [prec] -> [prec] | [real] -> [real]
-sample n = map mean . partitionInto n
-
-
-; Displays a simple plot of the given list of numbers in a window
-; Precise numbers may be of any magnitude
-; Real numbers are assumed to be in the range -1.0 < x < 1.0
-;   [prec] | [real] -> ()
-plot xs = match xs
-    _ : [prec] = let n = length xs
-                     m = largest xs
-                     ys = map (flip (/) m . (* 200)) xs
-                     plotMatrix (0 .. n) ys
-    _ : [real] = let n = length xs
-                     ys = map ((+ 1.0) . (* 0.5) . (* 200.0)) xs
-                     plotMatrix (0 .. n) ys
-
-plotSome = plot . take 700
-                     
-
-FUNCTION_CANVAS = class "vitry.runtime.util.FunctionCanvas"
-COMPONENT       = class "java.awt.Component"
-FRAME           = class "java.awt.Frame"
-DRAW_POLYLINE   = method (class "java.awt.Graphics") "drawPolyline" [class "[I", class "[I", class "int"]
-FRAME_ADD       = method FRAME "add" [COMPONENT]
-FRAME_SET_SIZE  = method FRAME "setSize" [`int, `int]
-FRAME_SHOW      = method FRAME "show" []
-FRAME_DISPOSE   = method FRAME "dispose" []
-
-window          = ref ()
-
-plotMatrix xs ys = 
-    do  oldWindow = (get window)
-        if (oldWindow != ()) (FRAME_DISPOSE oldWindow) else ()
-        canvas = new FUNCTION_CANVAS [paintPlot xs (map ((+ (largest ys)) . negate) ys) (min (length xs) (length ys))]
-        frame  = new FRAME ["Vitry"]
-        FRAME_ADD frame canvas
-        FRAME_SET_SIZE frame (INT_PRIM 700) (INT_PRIM 230)
-        FRAME_SHOW frame
-        set window frame
-        ()
-
-paintPlot xs ys n g = 
-    DRAW_POLYLINE g 
-        iarray xs
-        iarray ys 
-        INT_PRIM n     
-
-
-
-; Main program
-
-printEvents _ = do force (map print (events ()))
-                ()
-main _ = (export . fomus) (events (), decls, info)
-test _ = fomus (events (), decls, info)
-dump _ = join "\n" (events ())
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ; =============================================================================
 ; FOMUS
 
@@ -648,6 +453,79 @@ maybePitch x   = match x (x : () = "") (x = "pitch="   ++ string x)
 maybeDynamic x = match x (x : () = "") (x = "dynamic=" ++ string x)
 listOrString x = match x (x : [_] = fomusList x) (_ = string x)
 
+          
+
+
+; =============================================================================
+; Util
+
+noise   = unfold (fn (x) (randomDouble () * 2.0 - 1.0, 0)) 0
+line n  = cycle (map (approx . flip (/) n) (0 .. n))
+sinG = map (sin . (* 2.0 * pi))
+cosG = map (cos . (* 2.0 * pi))
+
+line1 = (sinG . zipWith (*) (line 4700) . cosG) (line 700)
+line2 = (sinG . zipWith (*) (line 4700) . cosG) (line 300)
+line3 = (sinG . zipWith (+) (map (* 0.1) (sinG (line 300)))) (line 1800)
+line4 = (sinG . (map (+ 0.11))) (line 1800)
+line5 = (sinG . (map (+ 0.3))) (line 1800)
+line6 = (sinG . (map (+ 0.7))) (line 1800)
+line7 = (sinG . zipWith (+) (map (* 0.1) ((sinG . sinG) (line 600)))) (line 600)
+
+loopTimes n = take n . loop
+major root = [root, root + 4, root + 7] 
+                             
+
+; Returns a list of approximating the values of the given list
+; by partitioning it and calculating the mean of each sublist.
+; Returns the original list if its length is >= n
+;   [prec] -> [prec] | [real] -> [real]
+sample n = map mean . partitionInto n
+
+
+; Displays a simple plot of the given list of numbers in a window
+; Precise numbers may be of any magnitude
+; Real numbers are assumed to be in the range -1.0 < x < 1.0
+;   [prec] | [real] -> ()
+plot xs = match xs
+    _ : [prec] = let n = length xs
+                     m = largest xs
+                     ys = map (flip (/) m . (* 200)) xs
+                     plotMatrix (0 .. n) ys
+    _ : [real] = let n = length xs
+                     ys = map ((+ 1.0) . (* 0.5) . (* 200.0)) xs
+                     plotMatrix (0 .. n) ys
+
+plotSome = plot . take 700
+                     
+
+FUNCTION_CANVAS = class "vitry.runtime.util.FunctionCanvas"
+COMPONENT       = class "java.awt.Component"
+FRAME           = class "java.awt.Frame"
+DRAW_POLYLINE   = method (class "java.awt.Graphics") "drawPolyline" [class "[I", class "[I", class "int"]
+FRAME_ADD       = method FRAME "add" [COMPONENT]
+FRAME_SET_SIZE  = method FRAME "setSize" [`int, `int]
+FRAME_SHOW      = method FRAME "show" []
+FRAME_DISPOSE   = method FRAME "dispose" []
+
+window          = ref ()
+
+plotMatrix xs ys = 
+    do  oldWindow = (get window)
+        if (oldWindow != ()) (FRAME_DISPOSE oldWindow) else ()
+        canvas = new FUNCTION_CANVAS [paintPlot xs (map ((+ (largest ys)) . negate) ys) (min (length xs) (length ys))]
+        frame  = new FRAME ["Vitry"]
+        FRAME_ADD frame canvas
+        FRAME_SET_SIZE frame (INT_PRIM 700) (INT_PRIM 230)
+        FRAME_SHOW frame
+        set window frame
+        ()
+
+paintPlot xs ys n g = 
+    DRAW_POLYLINE g 
+        iarray xs
+        iarray ys 
+        INT_PRIM n
 
 ; =============================================================================
 ; Output
@@ -674,3 +552,180 @@ export text = do
                 ()
             ; Open the score
             run [ "open", "-a", scoreEditor, xmlFile ]
+
+
+
+
+
+; =============================================================================
+
+info   = [ ("title",  "Skikt")
+         , ("author", "Hans Hoglund 2011") ]
+
+insts  = [ ("perc1", "percussion",  [ "snare-drum"
+                                    , "bass-drum"
+                                    , "crash-cymbal"
+                                    , "splash-cymbal" ]) ]
+                                  
+fl     = ("fl",   "flute",          [ ("abbr", "Fl.") ])
+ob     = ("ob",   "oboe",           [ ("abbr", "Ob.") ])
+cl     = ("cl",   "bflat-clarinet", [ ("abbr", "Kl.") ])
+bsn    = ("bsn",  "bassoon",        [ ("abbr", "Fag.") ])
+hrn    = ("hrn",  "horn",           [ ("abbr", "Hrn.") ])
+tpt    = ("tpt",  "bflat-trumpet",  [ ("abbr", "Tpt.") ])
+tbn    = ("tbn",  "tenor-trombone", [ ("abbr", "Tbn.") ])
+pno    = ("pno",  "piano",          [ ("abbr", "Pno.") ])
+vib    = ("vib",  "vibraphone",     [ ("abbr", "Vib.") ])
+crot   = ("crot", "vibraphone",     [ ("abbr", "Crot.")
+                                  , ("name", "Crotales") ])
+prc    = ("perc", "perc1",          [ ("abbr", "Perc.")
+                                  , ("name", "Percussion") ])
+vl1    = ("vl1",  "violin",         [ ("abbr", "Vl. I") ])
+vl2    = ("vl2",  "violin",         [ ("abbr", "Vl. II") ])
+vla    = ("vla",  "viola",          [ ("abbr", "Vla.") ])
+vc     = ("vc",   "cello",          [ ("abbr", "Vc.")
+                                  , ("name", "Violoncello") ])
+db     = ("db",   "bass",           [ ("abbr", "Kb.") ])
+
+parts  = [ fl, ob, cl, bsn
+         , hrn, tpt, tbn
+         , pno, vib, crot, prc
+         , vl1, vl2, vla, vc, db ]
+decls  = insts ++ parts
+
+snareDrum = `snareDrum
+bassDrum  = `bassDrum
+smallCymbal = `smallCymbal 
+largeCymbal = `largeCymbal
+
+percNote inst = match inst
+    x : bassDrum    = 65
+    x : snareDrum   = 72
+    x : smallCymbal = 76
+    x : largeCymbal = 79
+
+; The idea here is to create three layers of music, each of which
+; will have its own development of pitch, density and saturation
+; (by saturation we mean tone-quality as opposed to noise-quality)
+
+; The layers will be associated with dry, resonant and continuous sounds
+; respectively
+
+
+; Each layer consist of a tuple of continuous values
+; We represent this as a list of frames
+
+maxPitch = double
+minPitch = double
+density  = double
+saturation = double
+
+frame = (density, saturation)
+layer = [frame]
+
+
+
+
+
+;weighter     : frame -> weighting
+;instrumentor : frame -> music
+weighter             = _
+instrumentor         = _
+instrumentation      = ([part], weighter, instrumentor)
+instrumentationState = nil 
+                     | [instrumentation]
+            
+
+; [layer] -> dur -> [instrumentation] -> instrumentationState -> music
+instrument = ()
+
+
+instrumentations = [ 1
+                   , 2
+                   , 3]
+; Instrumentations
+; flute
+;   pizz, t-r, short, continous, continous-flz
+; oboe
+;   short, continous
+; clarinet
+;   short, continous, continous-flz
+; bassoon
+;   short, continous
+; horn
+;   short, short-stopped, continous, continous-stopped
+; trumpet
+;   short, short-mute, continous, continous-mute, continous-harmon
+; trombone
+;   short, short-mute, continous, continous-mute, continous-harmon
+; pno
+;   pizz, short, resonant, resonant ped
+; vib/crot
+;   pizz, short, resonant-ped
+; perc
+;   bass-resonant, bass-roll, 
+;   snare-short, snare-roll
+;   largeCym-resonant
+;   largeCym-roll
+;   woodBlock-short
+; vl
+;   bartok-pizz, pizz, pizz-harm, col-legno-bat, continous, continous-trem, contoninous-harm
+; vla
+;   bartok-pizz, pizz, pizz-harm, col-legno-bat, continous, continous-trem, contoninous-harm
+; vc
+;   bartok-pizz, pizz, pizz-harm, col-legno-bat, continous, continous-trem, contoninous-harm
+; kb
+;   bartok-pizz, pizz, pizz-harm, col-legno-bat, continous, continous-trem, contoninous-harm
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+
+                
+
+
+
+
+
+
+
+
+
+
+
+
+events _ = melody (loop 1) (take 70 (loop 60)) 
+
+
+     
+
+
+
+; Main program
+
+printEvents _ = do force (map print (events ()))
+                ()
+main _ = (export . fomus) (events (), decls, info)
+test _ = fomus (events (), decls, info)
+dump _ = join "\n" (events ())
+
+
