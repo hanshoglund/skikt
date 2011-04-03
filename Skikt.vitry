@@ -459,28 +459,14 @@ listOrString x = match x (x : [_] = fomusList x) (_ = string x)
 ; =============================================================================
 ; Util
 
-noise   = unfold (fn (x) (randomDouble () * 2.0 - 1.0, 0)) 0
-line n  = cycle (map (approx . flip (/) n) (0 .. n))
-sinG = map (sin . (* 2.0 * pi))
-cosG = map (cos . (* 2.0 * pi))
+; Misc
 
-line1 = (sinG . zipWith (*) (line 4700) . cosG) (line 700)
-line2 = (sinG . zipWith (*) (line 4700) . cosG) (line 300)
-line3 = (sinG . zipWith (+) (map (* 0.1) (sinG (line 300)))) (line 1800)
-line4 = (sinG . (map (+ 0.11))) (line 1800)
-line5 = (sinG . (map (+ 0.3))) (line 1800)
-line6 = (sinG . (map (+ 0.7))) (line 1800)
-line7 = (sinG . zipWith (+) (map (* 0.1) ((sinG . sinG) (line 600)))) (line 600)
-
+fst (a, b)  = a
+snd (a, b)  = b
 loopTimes n = take n . loop
-major root = [root, root + 4, root + 7] 
-                             
-
-; Returns a list of approximating the values of the given list
-; by partitioning it and calculating the mean of each sublist.
-; Returns the original list if its length is >= n
-;   [prec] -> [prec] | [real] -> [real]
-sample n = map mean . partitionInto n
+major root  = [root, root + 4, root + 7]
+        
+; Ranges
 
 range a = (a, a)
 
@@ -495,6 +481,37 @@ overlap (a, b) (c, d) =
 ; randomRange (rangeLow, rangeHigh) = random (rangeHigh - rangeLow) + rangeLow
 
 
+; Curves
+
+noise  = unfold (fn (x) (randomDouble () * 2.0 - 1.0, 0)) 0
+line n = cycle (map (approx . flip (/) n) (0 .. n))
+sinG   = map (sin . (* 2.0 * pi))
+cosG   = map (cos . (* 2.0 * pi))
+
+line1 = (sinG . zipWith (*) (line 4700) . cosG) (line 700)
+line2 = (sinG . zipWith (*) (line 4700) . cosG) (line 300)
+line3 = (sinG . zipWith (+) (map (* 0.1) (sinG (line 300)))) (line 1800)
+line4 = (sinG . (map (+ 0.11))) (line 1800)
+line5 = (sinG . (map (+ 0.3))) (line 1800)
+line6 = (sinG . (map (+ 0.7))) (line 1800)
+line7 = (sinG . zipWith (+) (map (* 0.1) ((sinG . sinG) (line 600)))) (line 600)
+                             
+
+; Returns a list of approximating the values of the given list
+; by partitioning it and calculating the mean of each sublist.
+; Returns the original list if its length is >= n
+;   [prec] -> [prec] | [real] -> [real]
+sample n = map mean . partitionInto n
+
+
+; signalToPositive = map ( . (* 0.5))
+; positiveToSignal
+
+
+; Plotting
+
+plotWindowSize    = (700, 200)
+plotWindowPadding = (0, 22)
 
 ; Displays a simple plot of the given list of numbers in a window
 ; Precise numbers may be of any magnitude
@@ -503,13 +520,13 @@ overlap (a, b) (c, d) =
 plot xs = match xs
     _ : [prec] = let n = length xs
                      m = largest xs
-                     ys = map (flip (/) m . (* 200)) xs
+                     ys = map (flip (/) m . (* (snd plotWindowSize))) xs
                      plotMatrix (0 .. n) ys
     _ : [real] = let n = length xs
-                     ys = map ((+ 1.0) . (* 0.5) . (* 200.0)) xs
+                     ys = map ((* (snd plotWindowSize)) . rationalize . (* 0.5) . (+ 1.0)) xs
                      plotMatrix (0 .. n) ys
 
-plotSome = plot . take 700
+plotSome = plot . take (fst plotWindowSize)
                      
 
 FUNCTION_CANVAS = class "vitry.runtime.util.FunctionCanvas"
@@ -526,10 +543,14 @@ window          = ref ()
 plotMatrix xs ys = 
     do  oldWindow = (get window)
         if (oldWindow != ()) (FRAME_DISPOSE oldWindow) else ()
-        canvas = new FUNCTION_CANVAS [paintPlot xs (map ((+ (largest ys)) . negate) ys) (min (length xs) (length ys))]
+        canvas = new 
+            FUNCTION_CANVAS
+            [paintPlot xs (map ((+ (snd plotWindowSize)) . negate) ys) (min (length xs) (length ys))]
         frame  = new FRAME ["Vitry"]
         FRAME_ADD frame canvas
-        FRAME_SET_SIZE frame (INT_PRIM 700) (INT_PRIM 230)
+        FRAME_SET_SIZE frame 
+            INT_PRIM (fst plotWindowSize + fst plotWindowPadding) 
+            INT_PRIM (snd plotWindowSize + snd plotWindowPadding)
         FRAME_SHOW frame
         set window frame
         ()
@@ -539,6 +560,8 @@ paintPlot xs ys n g =
         iarray xs
         iarray ys 
         INT_PRIM n
+
+
 
 ; =============================================================================
 ; Output
@@ -572,43 +595,43 @@ export text = do
 
 ; =============================================================================
 
-info   = [ ("title",  "Skikt")
-         , ("author", "Hans Hoglund 2011") ]
+info  : [setting] = [ ("title",  "Skikt")
+                    , ("author", "Hans Hoglund 2011") ]
 
-insts  = [ ("perc1", "percussion",  [ "snare-drum"
-                                    , "bass-drum"
-                                    , "crash-cymbal"
-                                    , "splash-cymbal" ]) ]
+insts : [inst]    = [ ("perc1", "percussion",  [ "snare-drum"
+                                               , "bass-drum"
+                                               , "crash-cymbal"
+                                               , "splash-cymbal" ]) ]
                                   
-fl     = ("fl",   "flute",          [ ("abbr", "Fl.") ])
-ob     = ("ob",   "oboe",           [ ("abbr", "Ob.") ])
-cl     = ("cl",   "bflat-clarinet", [ ("abbr", "Kl.") ])
-bsn    = ("bsn",  "bassoon",        [ ("abbr", "Fag.") ])
-hrn    = ("hrn",  "horn",           [ ("abbr", "Hrn.")
-                                    , ("name", "Horn in F") ])
-tpt    = ("tpt",  "bflat-trumpet",  [ ("abbr", "Tpt.") ])
-tbn    = ("tbn",  "tenor-trombone", [ ("abbr", "Tbn.") ])
-pno    = ("pno",  "piano",          [ ("abbr", "Pno.") ])
-vib    = ("vib",  "vibraphone",     [ ("abbr", "Vib.") ])
-crot   = ("crot", "vibraphone",     [ ("abbr", "Crot.")
-                                    , ("name", "Crotales") ])
-prc    = ("perc", "perc1",          [ ("abbr", "Perc.")
-                                    , ("name", "Percussion") ])
-vl1    = ("vl1",  "violin",         [ ("abbr", "Vl. I") ])
-vl2    = ("vl2",  "violin",         [ ("abbr", "Vl. II") ])
-vla    = ("vla",  "viola",          [ ("abbr", "Vla.") ])
-vc     = ("vc",   "cello",          [ ("abbr", "Vc.")
-                                    , ("name", "Violoncello") ])
-db     = ("db",   "bass",           [ ("abbr", "Kb.") ])
+fl    : part = ("fl",   "flute",          [ ("abbr", "Fl.") ])
+ob    : part = ("ob",   "oboe",           [ ("abbr", "Ob.") ])
+cl    : part = ("cl",   "bflat-clarinet", [ ("abbr", "Kl.") ])
+bsn   : part = ("bsn",  "bassoon",        [ ("abbr", "Fag.") ])
+hrn   : part = ("hrn",  "horn",           [ ("abbr", "Hrn.")
+                                          , ("name", "Horn in F") ])
+tpt   : part = ("tpt",  "bflat-trumpet",  [ ("abbr", "Tpt.") ])
+tbn   : part = ("tbn",  "tenor-trombone", [ ("abbr", "Tbn.") ])
+pno   : part = ("pno",  "piano",          [ ("abbr", "Pno.") ])
+vib   : part = ("vib",  "vibraphone",     [ ("abbr", "Vib.") ])
+crot  : part = ("crot", "vibraphone",     [ ("abbr", "Crot.")
+                                          , ("name", "Crotales") ])
+prc   : part = ("perc", "perc1",          [ ("abbr", "Perc.")
+                                          , ("name", "Percussion") ])
+vl1   : part = ("vl1",  "violin",         [ ("abbr", "Vl. I") ])
+vl2   : part = ("vl2",  "violin",         [ ("abbr", "Vl. II") ])
+vla   : part = ("vla",  "viola",          [ ("abbr", "Vla.") ])
+vc    : part = ("vc",   "cello",          [ ("abbr", "Vc.")
+                                          , ("name", "Violoncello") ])
+db    : part = ("db",   "bass",           [ ("abbr", "Kb.") ])
 
-parts  = [ fl, ob, cl, bsn
-         , hrn, tpt, tbn
-         , pno, vib, crot, prc
-         , vl1, vl2, vla, vc, db ]
-decls  = insts ++ parts
+parts : [part] = [ fl, ob, cl, bsn
+                 , hrn, tpt, tbn
+                 , pno, vib, crot, prc
+                 , vl1, vl2, vla, vc, db ]
+decls : [decl] = insts ++ parts
 
-snareDrum = `snareDrum
-bassDrum  = `bassDrum
+snareDrum   = `snareDrum
+bassDrum    = `bassDrum
 smallCymbal = `smallCymbal 
 largeCymbal = `largeCymbal
 
@@ -628,9 +651,13 @@ percNote inst = match inst
 dynamic    = double 
 saturation = double
 resonance  = double 
-frame = (dur, range pitch, range dyn, pitch, dynamic, saturation, resonance)
+
+frame = (dur, range pitch, range dur, dynamic, saturation, resonance)
 layer = [frame]
 
+layers : [layer] = [ []
+                   , []
+                   , [] ]
 
 
 
