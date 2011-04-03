@@ -11,7 +11,7 @@ module Hans.Music.Skikt
 scoreEditor = "/Applications/Sibelius 6.app"
 fileDir     = "/Users/hans/Documents/Musik/Skikt/output/"
 fileName    = "out"
-preview     = true
+preview     = false
 fixClefs    = false
 
 info   = [ ("title",  "Skikt")
@@ -80,19 +80,20 @@ percNote inst = match inst
 
 
 
-; events _ = 
-;     do  foo = legato ((tri . map (* 4) . map recip) (take 10 (geom 2 1))) (60 .. 72) 
-;         foo = restPhrase [">"] ["."] ["."] (loopTimes 12 1) (loop 1) (cycle (60 .. 72)) 
-;         ; bar = take 12 (chords (loop 4) (map major (map (+ 60) (rands 10))))
-;         bar = chordsArp (1 .. 4) (loop (major 60))
-;                    
-;         events = foldr sequence [] (loopTimes 3 foo)
-;         ; events = take 20 (loop foo)
-;         events = (mapMusic (setPart pno) events)
-;         events = (mapMusic (setVoice 1) events)
-;         events
-; 
-; major root = [root, root + 4, root + 7]    
+ 
+
+
+
+
+
+
+maxPitch = prec
+minPitch = prec
+density  = prec
+resonance = double
+saturation = double
+
+layer = [(maxPitch, minPitch, density, saturation)]
 
 
 
@@ -103,8 +104,18 @@ percNote inst = match inst
 
 
 
+events _ = 
+    do  foo = chordsPhrase [">"] ["."] ["."] (loopTimes 12 1) ((cycle . map major) (60 .. 72)) 
+        ; bar = take 12 (chords (loop 4) (map major (map (+ 60) (rands 10))))
+        bar = chordsArp (1 .. 4) (loop (major 60))
+                   
+        events = foldr sequence [] (loopTimes 3 foo)
+        ; events = take 20 (loop foo)
+        events = (mapMusic (setPart pno) events)
+        events = (mapMusic (setVoice 1) events)
+        events
 
-
+major root = [root, root + 4, root + 7] 
 
 ; Utils
 
@@ -112,10 +123,12 @@ percNote inst = match inst
 
 noise   = unfold (fn (x) (randomDouble () * 2.0 - 1.0, 0)) 0
 line n  = cycle (map (approx . flip (/) n) (0 .. n))
-gen f x = map f x
-sinG n  = map (sin . (* 2.0 * pi)) (line n)
-cosG n  = map (cos . (* 2.0 * pi)) (line n)
-
+sinG = map (sin . (* 2.0 * pi))
+cosG = map (cos . (* 2.0 * pi))
+a = ref ()
+b = ref ()
+c = ref ()
+d = ref ()
 
 loopTimes n = take n . loop
                              
@@ -125,6 +138,7 @@ loopTimes n = take n . loop
 ; Returns the original list if its length is >= n
 ;   [prec] -> [prec] | [real] -> [real]
 sample n = map mean . partitionInto n
+
 
 ; Displays a simple plot of the given list of numbers in a window
 ; Precise numbers may be of any magnitude
@@ -138,6 +152,8 @@ plot xs = match xs
     _ : [real] = let n = length xs
                      ys = map ((+ 1.0) . (* 0.5) . (* 200.0)) xs
                      plotMatrix (0 .. n) ys
+
+plotSome = plot . take 700
                      
 
 FUNCTION_CANVAS = class "vitry.runtime.util.FunctionCanvas"
@@ -498,9 +514,19 @@ chordsArpDown        = chordsPhrase ["arp_"] ["arp_"] ["arp_"]
 restMelody durs restDurs pitches = 
     interl (melody durs pitches) (rests (loop "+") restDurs)
 
+; [dur] -> [dur] -> [[pitch]] -> [note]
+restChords durs restDurs pitches = 
+    interl (chords durs pitches) (rests (loop "+") restDurs)
+
 ; [mark] -> [mark] -> [mark] -> [dur] -> [dur] -> [pitch] -> [event]
 restPhrase attack sustain release durs restDurs pitches = 
     interl (phrase attack sustain release durs pitches) (rests (loop "+") restDurs)
+
+; FIXME
+; [mark] -> [mark] -> [mark] -> [dur] -> [dur] -> [[pitch]]
+; restChordsPhrase attack sustain release durs restDurs pitches  = 
+    ; interl (chordsPhrase attack sustain release durs pitches) (rests (loop "+") restDurs)
+
 
 
 ; The music type allow us to sequence events in an abstract fashion
