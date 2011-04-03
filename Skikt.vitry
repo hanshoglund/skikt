@@ -482,6 +482,19 @@ major root = [root, root + 4, root + 7]
 ;   [prec] -> [prec] | [real] -> [real]
 sample n = map mean . partitionInto n
 
+range a = (a, a)
+
+; range -> range | ()
+overlap (a, b) (c, d) = 
+    if  (a > b || c > d) () else
+        let x = max a c
+            y = min b d
+            if  (x > y) () else (x, y)
+
+; range prec -> prec
+; randomRange (rangeLow, rangeHigh) = random (rangeHigh - rangeLow) + rangeLow
+
+
 
 ; Displays a simple plot of the given list of numbers in a window
 ; Precise numbers may be of any magnitude
@@ -605,90 +618,132 @@ percNote inst = match inst
     x : smallCymbal = 76
     x : largeCymbal = 79
 
-; The idea here is to create three layers of music, each of which
-; will have its own development of pitch, density and saturation
-; (by saturation we mean tone-quality as opposed to noise-quality)
-
-; The layers will be associated with dry, resonant and continuous sounds
-; respectively
 
 
-range a = (a, a)
-
-; range -> range | ()
-getOverlap (a, b) (c, d) = 
-    if  (a > b || c > d) () else
-        let x = max a c
-            y = min b d
-            if  (x > y) () else (x, y)
 
 
+; A layer is a sequence of frames, each of which has a duration
+; and some attributes
+
+dynamic    = double 
 saturation = double
-
-frame = (range pitch, range dur, saturation)
+resonance  = double 
+frame = (dur, range pitch, range dyn, pitch, dynamic, saturation, resonance)
 layer = [frame]
 
 
-weighting = double
-;weighter     : frame -> weighting
-;instrumentor : frame -> music
+
+
+
+; An orchestration is a list of parts, along with two functions
+; to indicate its appropriateness for some frame, and a function
+; to perform the orchestration.
+;   - The predicate states an absolute condition for the
+;     orchestration to be used, such as pitch range.
+;   - The weigher states a relative appropriatness of the
+;     orchestration based on its quality. A higher weighting
+;     means that the orchestration is more likely to be chosen.
+;   - The orchestrator performs the orchestration.
+
+; FIXME we can not represent function types yet
+; predicate    : frame -> boolean
+; weighter     : frame -> double
+; orchestrator : state -> frame -> (state, music)
+predicate            = _
 weighter             = _
-instrumentor         = _
-instrumentation      = ([part], range pitch, range dur, weighter, instrumentor)
-instrumentationState = nil 
-                     | [instrumentation]
+orchestrator         = _
 
-; range -> pitch
-nextPitch (rangeLow, rangeHigh) = random (rangeHigh - rangeLow) + rangeLow
+orchestration      = ([part], predicate, weighter, orchestrator)
 
-; Instrumentations
+; An orchestrationState tracks the duration left to play in each part,
+; to prevent the orchestrate function from using instrument that is
+; already playing
+orchestrationState = [(part, dur)]
 
-flutePizz                 = ([fl],   (60, 93),  (0, 12), nil, nil) 
-fluteToungeRam            = ([fl],   (60, 71),  (0, 1),  nil, nil)
-fluteShort                = ([fl],   (60, 93),  (0, 1),  nil, nil)
-fluteContinuous           = ([fl],   (60, 93),  (0, 12), nil, nil)
-fluteContinuousFlz        = ([fl],   (60, 93),  (0, 12), nil, nil)
-oboeShort                 = ([ob],   (62, 88),  (0, 1),  nil, nil)
-oboeContinuous            = ([ob],   (62, 88),  (0, 12), nil, nil)
-clarinetShort             = ([cl],   (50, 86),  (0, 1),  nil, nil)
-clarinetContinuous        = ([cl],   (50, 86),  (0, 12), nil, nil)
-clarinetContinuousFlz     = ([cl],   (50, 86),  (0, 12), nil, nil)
-bassClarinetShort         = ([cl],   (38, 72),  (0, 1),  nil, nil)
-bassClarinetContinuous    = ([cl],   (38, 72),  (0, 12), nil, nil)
-bassClarinetContinuousFlz = ([cl],   (38, 72),  (0, 1),  nil, nil)
-bassoonShort              = ([bsn],  (34, 67),  (0, 1),  nil, nil)
-bassoonContinuous         = ([bsn],  (34, 67),  (0, 12), nil, nil)
-                                                
-hornShort                 = ([hrn],  (48, 71),  (1, 1),  nil, nil)
-hornShortStopped          = ([hrn],  (48, 71),  (1, 1),  nil, nil)
-hornContinuous            = ([hrn],  (48, 71),  (1, 12), nil, nil)
-hornContinuousStopped     = ([hrn],  (48, 71),  (1, 12), nil, nil)
-trumpetShort              = ([tpt],  (53, 81),  (1, 1),  nil, nil)
-trumpetShortMute          = ([tpt],  (53, 81),  (1, 1),  nil, nil)
-trumpetContinuous         = ([tpt],  (53, 81),  (1, 1),  nil, nil)
-trumpetContinuousMute     = ([tpt],  (53, 81),  (1, 1),  nil, nil)
-trumpetContinuousHarmon   = ([tpt],  (53, 81),  (1, 1),  nil, nil)
-tromboneShort             = ([tbn],  (40, 69),  (1, 1),  nil, nil)
-tromboneShortMute         = ([tbn],  (40, 69),  (1, 1),  nil, nil)
-tromboneContinuous        = ([tbn],  (40, 69),  (1, 1),  nil, nil)
-tromboneContinuousMute    = ([tbn],  (40, 69),  (1, 1),  nil, nil)
-tromboneContinuousHarmon  = ([tbn],  (40, 69),  (1, 1),  nil, nil)
 
-pianoPizz                 = ([pno],  (21, 108), (1, 1),  nil, nil)
-pianoShort                = ([pno],  (21, 108), (1, 1),  nil, nil)
-pianoResonant             = ([pno],  (21, 108), (1, 1),  nil, nil)
-crotalesShort             = ([crot], (60, 72),  (1, 1),  nil, nil)
-crotalesResonant          = ([crot], (21, 108), (1, 8),  nil, nil)
-vibraphoneShort           = ([vib],  (53, 89),  (1, 1),  nil, nil)
-vibraphoneResonant        = ([vib],  (53, 89),  (1, 1),  nil, nil)
+; orchestrationState -> [layer] -> [orchestration] -> music
+orchestrate_ offset state layers instns = 
+    let frames = map head layers
+        layers = map tail layers
+        
+        ; Filter out busy parts
+        instns = map filterBusy state instns
+        
+        ; Instrument each frame and compose it in parallel
+        (state, musics) = unzip (map (instrumentFrame instns) frames)
+        music  = foldr parallel () musics
+        ; state  = updateState music state XXX
+        sequence music (orchestrate (offset + dur music) state layers instns)
 
-bassDrumResonant          = ([prc],  (),        (1, 1),  nil, nil)
-bassDrumRoll              = ([prc],  (),        (1, 1),  nil, nil)
-snareDrumResonant         = ([prc],  (),        (1, 1),  nil, nil)
-snareDrumRoll             = ([prc],  (),        (1, 1),  nil, nil)
-largeCymbalResonant       = ([prc],  (),        (1, 1),  nil, nil)
-largeCymbalRoll           = ([prc],  (),        (1, 1),  nil, nil)
-woodblockShort            = ([prc],  (),        (1, 1),  nil, nil)
+
+; [orchestration] -> frame -> music
+instrumentFrame instns frame = 
+    let instns = filterImpossible frame instns
+        weightings = map (weightInstrumentation frame) instns
+        instn = index (largest weightings) instns
+        (getInstrumentor instns) frame
+    
+
+; Filters busy instruments
+; orchestrationState -> [orchestration]
+filterBusy state instns = ()      
+
+; Filter using the orchestration predicate
+; frame -> [orchestration] -> [orchestration]         
+filterImpossible frame instns = ()
+
+; [layer] -> [orchestration] -> music
+orchestrate = orchestrate_ ()
+
+
+
+
+flutePizz                 = ([fl],       (60, 93),  (0, 12), (fn (x) 1), (fn ((pr, dr, sat)) 1)) 
+fluteToungeRam            = ([fl],       (60, 71),  (0, 1),  nil, nil)
+fluteShort                = ([fl],       (60, 93),  (0, 1),  nil, nil)
+fluteContinuous           = ([fl],       (60, 93),  (0, 12), nil, nil)
+fluteContinuousFlz        = ([fl],       (60, 93),  (0, 12), nil, nil)
+oboeShort                 = ([ob],       (62, 88),  (0, 1),  nil, nil)
+oboeContinuous            = ([ob],       (62, 88),  (0, 12), nil, nil)
+clarinetShort             = ([cl],       (50, 86),  (0, 1),  nil, nil)
+clarinetContinuous        = ([cl],       (50, 86),  (0, 12), nil, nil)
+clarinetContinuousFlz     = ([cl],       (50, 86),  (0, 12), nil, nil)
+bassClarinetShort         = ([cl],       (38, 72),  (0, 1),  nil, nil)
+bassClarinetContinuous    = ([cl],       (38, 72),  (0, 12), nil, nil)
+bassClarinetContinuousFlz = ([cl],       (38, 72),  (0, 1),  nil, nil)
+bassoonShort              = ([bsn],      (34, 67),  (0, 1),  nil, nil)
+bassoonContinuous         = ([bsn],      (34, 67),  (0, 12), nil, nil)
+                                                    
+hornShort                 = ([hrn],      (48, 71),  (1, 1),  nil, nil)
+hornShortStopped          = ([hrn],      (48, 71),  (1, 1),  nil, nil)
+hornContinuous            = ([hrn],      (48, 71),  (1, 12), nil, nil)
+hornContinuousStopped     = ([hrn],      (48, 71),  (1, 12), nil, nil)
+trumpetShort              = ([tpt],      (53, 81),  (1, 1),  nil, nil)
+trumpetShortMute          = ([tpt],      (53, 81),  (1, 1),  nil, nil)
+trumpetContinuous         = ([tpt],      (53, 81),  (1, 1),  nil, nil)
+trumpetContinuousMute     = ([tpt],      (53, 81),  (1, 1),  nil, nil)
+trumpetContinuousHarmon   = ([tpt],      (53, 81),  (1, 1),  nil, nil)
+tromboneShort             = ([tbn],      (40, 69),  (1, 1),  nil, nil)
+tromboneShortMute         = ([tbn],      (40, 69),  (1, 1),  nil, nil)
+tromboneContinuous        = ([tbn],      (40, 69),  (1, 1),  nil, nil)
+tromboneContinuousMute    = ([tbn],      (40, 69),  (1, 1),  nil, nil)
+tromboneContinuousHarmon  = ([tbn],      (40, 69),  (1, 1),  nil, nil)
+                                         
+pianoPizz                 = ([pno],      (21, 108), (1, 1),  nil, nil)
+pianoShort                = ([pno],      (21, 108), (1, 1),  nil, nil)
+pianoResonant             = ([pno],      (21, 108), (1, 1),  nil, nil)
+crotalesShort             = ([crot],     (60, 72),  (1, 1),  nil, nil)
+crotalesResonant          = ([crot],     (21, 108), (1, 8),  nil, nil)
+vibraphoneShort           = ([vib],      (53, 89),  (1, 1),  nil, nil)
+vibraphoneResonant        = ([vib],      (53, 89),  (1, 1),  nil, nil)
+                                         
+bassDrumResonant          = ([prc],      (),        (1, 1),  nil, nil)
+bassDrumRoll              = ([prc],      (),        (1, 1),  nil, nil)
+snareDrumResonant         = ([prc],      (),        (1, 1),  nil, nil)
+snareDrumRoll             = ([prc],      (),        (1, 1),  nil, nil)
+largeCymbalResonant       = ([prc],      (),        (1, 1),  nil, nil)
+largeCymbalRoll           = ([prc],      (),        (1, 1),  nil, nil)
+woodblockShort            = ([prc],      (),        (1, 1),  nil, nil)
 
 violinBartokPizz          = ([vl1, vl2], (55, 91), (1, 1), nil, nil)
 violinPizz                = ([vl1, vl2], (55, 91), (1, 1), nil, nil)
@@ -697,29 +752,29 @@ violinColLegnoBat         = ([vl1, vl2], (55, 91), (1, 1), nil, nil)
 violinContinous           = ([vl1, vl2], (55, 91), (1, 1), nil, nil)
 violinContinousTrem       = ([vl1, vl2], (55, 91), (1, 1), nil, nil)
 violinContinousHarm       = ([vl1, vl2], (55, 91), (1, 1), nil, nil)
-violaBartokPizz           = ([vla], (55, 91), (1, 1), nil, nil)
-violaPizz                 = ([vla], (48, 84), (1, 1), nil, nil)
-violaPizzHarm             = ([vla], (48, 84), (1, 1), nil, nil)
-violaColLegnoBat          = ([vla], (48, 84), (1, 1), nil, nil)
-violaContinous            = ([vla], (48, 84), (1, 1), nil, nil)
-violaContinousTrem        = ([vla], (48, 84), (1, 1), nil, nil)
-violaContinousHarm        = ([vla], (48, 84), (1, 1), nil, nil)
-celloBartokPizz           = ([vc], (36, 72), (1, 1), nil, nil)
-celloPizz                 = ([vc], (36, 72), (1, 1), nil, nil)
-celloPizzHarm             = ([vc], (36, 72), (1, 1), nil, nil)
-celloColLegnoBat          = ([vc], (36, 72), (1, 1), nil, nil)
-celloContinous            = ([vc], (36, 72), (1, 1), nil, nil)
-celloContinousTrem        = ([vc], (36, 72), (1, 1), nil, nil)
-celloContinousHarm        = ([vc], (36, 72), (1, 1), nil, nil)
-bassBartokPizz            = ([db], (28, 52), (1, 1), nil, nil)
-bassPizz                  = ([db], (28, 52), (1, 1), nil, nil)
-bassPizzHarm              = ([db], (28, 52), (1, 1), nil, nil)
-bassColLegnoBat           = ([db], (28, 52), (1, 1), nil, nil)
-bassContinous             = ([db], (28, 52), (1, 1), nil, nil)
-bassContinousTrem         = ([db], (28, 52), (1, 1), nil, nil)
-bassContinousHarm         = ([db], (28, 52), (1, 1), nil, nil)
+violaBartokPizz           = ([vla],      (55, 91), (1, 1), nil, nil)
+violaPizz                 = ([vla],      (48, 84), (1, 1), nil, nil)
+violaPizzHarm             = ([vla],      (48, 84), (1, 1), nil, nil)
+violaColLegnoBat          = ([vla],      (48, 84), (1, 1), nil, nil)
+violaContinous            = ([vla],      (48, 84), (1, 1), nil, nil)
+violaContinousTrem        = ([vla],      (48, 84), (1, 1), nil, nil)
+violaContinousHarm        = ([vla],      (48, 84), (1, 1), nil, nil)
+celloBartokPizz           = ([vc],       (36, 72), (1, 1), nil, nil)
+celloPizz                 = ([vc],       (36, 72), (1, 1), nil, nil)
+celloPizzHarm             = ([vc],       (36, 72), (1, 1), nil, nil)
+celloColLegnoBat          = ([vc],       (36, 72), (1, 1), nil, nil)
+celloContinous            = ([vc],       (36, 72), (1, 1), nil, nil)
+celloContinousTrem        = ([vc],       (36, 72), (1, 1), nil, nil)
+celloContinousHarm        = ([vc],       (36, 72), (1, 1), nil, nil)
+bassBartokPizz            = ([db],       (28, 52), (1, 1), nil, nil)
+bassPizz                  = ([db],       (28, 52), (1, 1), nil, nil)
+bassPizzHarm              = ([db],       (28, 52), (1, 1), nil, nil)
+bassColLegnoBat           = ([db],       (28, 52), (1, 1), nil, nil)
+bassContinous             = ([db],       (28, 52), (1, 1), nil, nil)
+bassContinousTrem         = ([db],       (28, 52), (1, 1), nil, nil)
+bassContinousHarm         = ([db],       (28, 52), (1, 1), nil, nil)
                                                                 
-instrumentations = [ flutePizz, fluteToungeRam, fluteShort, fluteContinuous, fluteContinuousFlz
+orchestrations   = [ flutePizz, fluteToungeRam, fluteShort, fluteContinuous, fluteContinuousFlz
                    , oboeShort, oboeContinuous, clarinetShort, clarinetContinuous
                    , clarinetContinuousFlz, bassClarinetShort, bassClarinetContinuous
                    , bassClarinetContinuousFlz, bassoonShort, bassoonContinuous
@@ -743,8 +798,6 @@ instrumentations = [ flutePizz, fluteToungeRam, fluteShort, fluteContinuous, flu
 
 
 
-; [layer] -> dur -> [instrumentation] -> instrumentationState -> music
-instrument = ()
 
 
 
