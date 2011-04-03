@@ -73,7 +73,7 @@ partMap  = (voice, voice, fomusId)
 metaPart = (fomusId, [partMap])
 part     = nil
          | metaPart
-         | (fomusId, inst, [setting]) 
+         | (fomusId, inst, [setting])
 note     = (part, voice, time, grace, dur, pitch, dyn, [mark], [setting])
          | (part, voice, time, dur, pitch, dyn, [mark], [setting])
          | (time, dur, pitch, dyn, [mark], [setting])
@@ -83,7 +83,7 @@ rest     = (part, voice, time, grace, dur, [mark], [setting])
          | (time, dur, [mark], [setting])
 meas     = (time, dur, [setting])
          | (dur, [setting])
-        
+
 decl     = part | inst | metaPart | percInst | staff | clef
 event    = note | rest | meas
 
@@ -94,7 +94,7 @@ music    = [event]
 score    = (music, [decl], [setting])
 
 
-expandEvent e : event = match e       
+expandEvent e : event = match e
     (r, v, t, g, d, p, n, m, s)  : note = e
     (r, v, t, d, p, n:dyn, m, s) : note = (r,  v,  t,  (), d,  p, n, m, s)
     (t, d, p, n:dyn, m, s)       : note = ((), (), t,  (), d,  p, n, m, s)
@@ -172,7 +172,7 @@ getName x = match x
     (id, _, _) : part  = id
     (id, _)    : metaPart = id
 
-; a -> event -> event    
+; a -> event -> event
 setTime   x e = match e
     e : note = setNoteTime  x (expandEvent e)
     e : rest = setRestTime  x (expandEvent e)
@@ -213,18 +213,18 @@ withDyn   f x = setDyn   (f (getDyn   x)) x
 ; unaffected by surrounding events
 ;
 ; Normal form events lists take three shapes:
-;   - Relative, where 
+;   - Relative, where
 ;       - durations are given explitly
-;       - the first time value is a number 
+;       - the first time value is a number
 ;       - all other time values are "+" or nil
-;   - Absolute, where 
+;   - Absolute, where
 ;       - time values are given explitly
-;       - the last duration is a number 
+;       - the last duration is a number
 ;       - and all other durations are "+" or nil
-;   - Explicit, where 
+;   - Explicit, where
 ;       - all time values and durations are given explitly
 
-assureTimeAndDur t nt d nd event = 
+assureTimeAndDur t nt d nd event =
     match (getTime event, getDur event)
         (_ : nt, _     ) = false
         (_,      _ : nd) = false
@@ -272,7 +272,7 @@ chordT time dur pitches = match pitches
 chordsT time1 time2 durs pitches = match (durs, pitches)
     _ : [], _        = []
     _,      _ : []   = []
-    (d, ds), (p, ps) = (delay chordT time1 d p ++ chordsT time2 time2 ds ps) 
+    (d, ds), (p, ps) = (delay chordT time1 d p ++ chordsT time2 time2 ds ps)
 
 ; dur -> [pitch] -> [note]
 chord = chordT 0
@@ -281,9 +281,9 @@ chord = chordT 0
 chords = chordsT 0 "+"
 
 ; [mark] -> [mark] -> [mark] -> [note] -> [note]
-phraseNotes attack sustain release notes =  
-    [setMarks attack (head notes)] 
-    ++ map (setMarks sustain) ((init . tail) notes) 
+phraseNotes attack sustain release notes =
+    [setMarks attack (head notes)]
+    ++ map (setMarks sustain) ((init . tail) notes)
     ++ [setMarks release (last notes)]
 
 ; [mark] -> [mark] -> [mark] -> [dur] -> [pitch]
@@ -316,20 +316,20 @@ chordsArpDown        = chordsPhrase ["arp_"] ["arp_"] ["arp_"]
 
 
 ; [dur] -> [dur] -> [pitch] -> [event]
-restMelody durs restDurs pitches = 
+restMelody durs restDurs pitches =
     interl (melody durs pitches) (rests (loop "+") restDurs)
 
 ; [dur] -> [dur] -> [[pitch]] -> [note]
-restChords durs restDurs pitches = 
+restChords durs restDurs pitches =
     interl (chords durs pitches) (rests (loop "+") restDurs)
 
 ; [mark] -> [mark] -> [mark] -> [dur] -> [dur] -> [pitch] -> [event]
-restPhrase attack sustain release durs restDurs pitches = 
+restPhrase attack sustain release durs restDurs pitches =
     interl (phrase attack sustain release durs pitches) (rests (loop "+") restDurs)
 
 ; FIXME
 ; [mark] -> [mark] -> [mark] -> [dur] -> [dur] -> [[pitch]]
-; restChordsPhrase attack sustain release durs restDurs pitches  = 
+; restChordsPhrase attack sustain release durs restDurs pitches  =
     ; interl (chordsPhrase attack sustain release durs pitches) (rests (loop "+") restDurs)
 
 
@@ -348,22 +348,22 @@ duration m = match m
     (_ : `seq, a, b) = (+) (duration a) (duration b)
     (_ : `par, a, b) = max (duration a) (duration b)
     m : [event]      = (getTime . head) m + (sum . map getActualDur) m
-    
+
 ; music -> [event]
 musicToEvents m = match m
     (_ : `seq, a, b) = musicToEvents a ++ offset (duration a) (musicToEvents b)
-    (_ : `par, a, b) = musicToEvents a ++ musicToEvents b 
+    (_ : `par, a, b) = musicToEvents a ++ musicToEvents b
     m : [event]      = m
 
 mapMusic f m = match m
     (_ : `seq, a, b) = (`seq, mapMusic f a, mapMusic f b)
-    (_ : `par, a, b) = (`par, mapMusic f a, mapMusic f b) 
-    m : [event]      = map f m 
+    (_ : `par, a, b) = (`par, mapMusic f a, mapMusic f b)
+    m : [event]      = map f m
 
 
 
 ; Simple inspectors for the repl
-    
+
 declType d = match d
     d : part     = `part
     d : inst     = `inst
@@ -385,16 +385,16 @@ fomus data = match data
     (id, x, y)                : mark = "[" ++ string id ++ " " ++ fomus x ++ " " ++ fomus y ++ "]"
     (id, x)                   : mark = "[" ++ string id ++ " " ++ fomus x ++ "]"
     id                        : mark = "[" ++ string id ++ "]"
-    
+
     (name, value)             : setting = name ++ "=" ++ fomus value
-        
+
     (id, template, percInsts) : inst = "inst <"
-                                    ++ "id="        ++ id              ++ " " 
-                                    ++ "template="  ++ fomus template  ++ " " 
+                                    ++ "id="        ++ id              ++ " "
+                                    ++ "template="  ++ fomus template  ++ " "
                                     ++ "percinsts=" ++ fomusList percInsts ++ ">"
     (id, inst, settings)      : part = "part <"
-                                    ++ "id="   ++ id         ++ " " 
-                                    ++ "inst=" ++ fomus inst ++ " " 
+                                    ++ "id="   ++ id         ++ " "
+                                    ++ "inst=" ++ fomus inst ++ " "
                                     ++ fomus settings        ++ ">"
     (id, partMaps)            : metaPart = "metapart <"
                                     ++ "id="    ++ string id          ++ " "
@@ -402,25 +402,25 @@ fomus data = match data
     (from, to, id)            : partMap = "<"
                                     ++ "from-voice=" ++ string from ++ " "
                                     ++ "to-voice="   ++ string to   ++ " "
-                                    ++ "part="       ++  string id  ++ ">"                                    
-    
+                                    ++ "part="       ++  string id  ++ ">"
+
     (part, voice, time, grace, dur, pitch, dyn, marks, settings) : note = "note "
-                                    ++ maybePart part   ++ " " 
-                                    ++ maybeVoice voice ++ " " 
-                                    ++ maybeTime time   ++ " " 
-                                    ++ maybeGrace grace ++ " " 
-                                    ++ maybeDur dur     ++ " " 
-                                    ++ maybePitch pitch ++ " " 
-                                    ++ maybeDynamic dyn ++ " " 
-                                    ++ fomus marks      ++ " " 
+                                    ++ maybePart part   ++ " "
+                                    ++ maybeVoice voice ++ " "
+                                    ++ maybeTime time   ++ " "
+                                    ++ maybeGrace grace ++ " "
+                                    ++ maybeDur dur     ++ " "
+                                    ++ maybePitch pitch ++ " "
+                                    ++ maybeDynamic dyn ++ " "
+                                    ++ fomus marks      ++ " "
                                     ++ fomus settings   ++ ";"
     (part, voice, time, grace, dur, marks, settings) : rest = "rest "
-                                    ++ maybePart part   ++ " " 
-                                    ++ maybeVoice voice ++ " " 
-                                    ++ maybeTime time   ++ " " 
-                                    ++ maybeGrace grace ++ " " 
-                                    ++ maybeDur dur     ++ " " 
-                                    ++ fomus marks      ++ " " 
+                                    ++ maybePart part   ++ " "
+                                    ++ maybeVoice voice ++ " "
+                                    ++ maybeTime time   ++ " "
+                                    ++ maybeGrace grace ++ " "
+                                    ++ maybeDur dur     ++ " "
+                                    ++ fomus marks      ++ " "
                                     ++ fomus settings   ++ ";"
     (time, dur, settings)     : meas = ""
                                     ++ maybeTime time   ++ " "
@@ -453,7 +453,7 @@ maybePitch x   = match x (x : () = "") (x = "pitch="   ++ string x)
 maybeDynamic x = match x (x : () = "") (x = "dynamic=" ++ string x)
 listOrString x = match x (x : [_] = fomusList x) (_ = string x)
 
-          
+
 
 
 ; =============================================================================
@@ -463,15 +463,18 @@ listOrString x = match x (x : [_] = fomusList x) (_ = string x)
 
 fst (a, b)  = a
 snd (a, b)  = b
+
 loopTimes n = take n . loop
+
 major root  = [root, root + 4, root + 7]
-        
+
+
 ; Ranges
 
 range a = (a, a)
 
 ; range -> range | ()
-overlap (a, b) (c, d) = 
+overlap (a, b) (c, d) =
     if  (a > b || c > d) () else
         let x = max a c
             y = min b d
@@ -488,24 +491,18 @@ line n = cycle (map (approx . flip (/) n) (0 .. n))
 sinG   = map (sin . (* 2.0 * pi))
 cosG   = map (cos . (* 2.0 * pi))
 
-line1 = (sinG . zipWith (*) (line 4700) . cosG) (line 700)
-line2 = (sinG . zipWith (*) (line 4700) . cosG) (line 300)
-line3 = (sinG . zipWith (+) (map (* 0.1) (sinG (line 300)))) (line 1800)
-line4 = (sinG . (map (+ 0.11))) (line 1800)
-line5 = (sinG . (map (+ 0.3))) (line 1800)
-line6 = (sinG . (map (+ 0.7))) (line 1800)
-line7 = (sinG . zipWith (+) (map (* 0.1) ((sinG . sinG) (line 600)))) (line 600)
-                             
 
-; Returns a list of approximating the values of the given list
-; by partitioning it and calculating the mean of each sublist.
+; Returns a list of length n approximating the values of the given
+; list by partitioning it and calculating the mean of each sublist.
 ; Returns the original list if its length is >= n
-;   [prec] -> [prec] | [real] -> [real]
+;   int -> [prec] -> [prec] | [real] -> [real]
 sample n = map mean . partitionInto n
 
+;   int -> [prec] -> [prec] | [real] -> [real]
+; interpolate n =
 
-; signalToPositive = map ( . (* 0.5))
-; positiveToSignal
+signalToPositive = map ((* 0.5)    . (+ 1.0))
+positiveToSignal = map ((+ (-1.0)) . (* 2.0))
 
 
 ; Plotting
@@ -518,16 +515,18 @@ plotWindowPadding = (0, 22)
 ; Real numbers are assumed to be in the range -1.0 < x < 1.0
 ;   [prec] | [real] -> ()
 plot xs = match xs
-    _ : [prec] = let n = length xs
-                     m = largest xs
-                     ys = map (flip (/) m . (* (snd plotWindowSize))) xs
-                     plotMatrix (0 .. n) ys
-    _ : [real] = let n = length xs
-                     ys = map ((* (snd plotWindowSize)) . rationalize . (* 0.5) . (+ 1.0)) xs
-                     plotMatrix (0 .. n) ys
+    _ : [prec] =
+        let n  = length xs
+            m  = largest xs
+            ys = map (flip (/) m . (* (snd plotWindowSize))) xs
+            plotMatrix (0 .. n) ys
+    _ : [real] =
+        let n  = length xs
+            ys = map ((* (snd plotWindowSize)) . rationalize . (* 0.5) . (+ 1.0)) xs
+            plotMatrix (0 .. n) ys
 
 plotSome = plot . take (fst plotWindowSize)
-                     
+
 
 FUNCTION_CANVAS = class "vitry.runtime.util.FunctionCanvas"
 COMPONENT       = class "java.awt.Component"
@@ -540,25 +539,27 @@ FRAME_DISPOSE   = method FRAME "dispose" []
 
 window          = ref ()
 
-plotMatrix xs ys = 
-    do  oldWindow = (get window)
-        if (oldWindow != ()) (FRAME_DISPOSE oldWindow) else ()
-        canvas = new 
-            FUNCTION_CANVAS
-            [paintPlot xs (map ((+ (snd plotWindowSize)) . negate) ys) (min (length xs) (length ys))]
+plotMatrix xs ys =
+    let zs     = map ((+ (snd plotWindowSize)) . negate) ys
+        n      = min (length xs) (length ys)
+        canvas = new FUNCTION_CANVAS [paintPlot xs zs n]
+        oldFrame = get window
         frame  = new FRAME ["Vitry"]
-        FRAME_ADD frame canvas
-        FRAME_SET_SIZE frame 
-            INT_PRIM (fst plotWindowSize + fst plotWindowPadding) 
-            INT_PRIM (snd plotWindowSize + snd plotWindowPadding)
-        FRAME_SHOW frame
-        set window frame
-        ()
+        do  FRAME_ADD frame canvas
+            FRAME_SET_SIZE frame
+                INT_PRIM (fst plotWindowSize + fst plotWindowPadding)
+                INT_PRIM (snd plotWindowSize + snd plotWindowPadding)
+            if  (oldFrame != nil)
+                FRAME_DISPOSE oldFrame
+                ()
+            FRAME_SHOW frame
+            set window frame
+            ()
 
-paintPlot xs ys n g = 
-    DRAW_POLYLINE g 
+paintPlot xs ys n g =
+    DRAW_POLYLINE g
         iarray xs
-        iarray ys 
+        iarray ys
         INT_PRIM n
 
 
@@ -579,7 +580,7 @@ export text = do
         do run [ "fomus", fmsFile, "-o", lyFile ]
         ; else
         do run [ "fomus", fmsFile, "-o", xmlFile ]
-            if fixClefs 
+            if fixClefs
                 do print "adjusting fomus clefs..."
                     replaceFile xmlFile
                         [ "<sign>F</sign>", "<sign>C</sign>" ]
@@ -602,7 +603,7 @@ insts : [inst]    = [ ("perc1", "percussion",  [ "snare-drum"
                                                , "bass-drum"
                                                , "crash-cymbal"
                                                , "splash-cymbal" ]) ]
-                                  
+
 fl    : part = ("fl",   "flute",          [ ("abbr", "Fl.") ])
 ob    : part = ("ob",   "oboe",           [ ("abbr", "Ob.") ])
 cl    : part = ("cl",   "bflat-clarinet", [ ("abbr", "Kl.") ])
@@ -632,7 +633,7 @@ decls : [decl] = insts ++ parts
 
 snareDrum   = `snareDrum
 bassDrum    = `bassDrum
-smallCymbal = `smallCymbal 
+smallCymbal = `smallCymbal
 largeCymbal = `largeCymbal
 
 percNote inst = match inst
@@ -643,14 +644,21 @@ percNote inst = match inst
 
 
 
+curve1 = (sinG . zipWith (*) (line 4700) . cosG) (line 700)
+curve2 = (sinG . zipWith (*) (line 4700) . cosG) (line 300)
+curve3 = (sinG . zipWith (+) (map (* 0.1) (sinG (line 300)))) (line 1800)
+curve4 = (sinG . (map (+ 0.11))) (line 1800)
+curve5 = (sinG . (map (+ 0.3))) (line 1800)
+curve6 = (sinG . (map (+ 0.7))) (line 1800)
+curve7 = (sinG . zipWith (+) (map (* 0.1) ((sinG . sinG) (line 600)))) (line 600)
 
 
 ; A layer is a sequence of frames, each of which has a duration
 ; and some attributes
 
-dynamic    = double 
+dynamic    = double
 saturation = double
-resonance  = double 
+resonance  = double
 
 frame = (dur, range pitch, range dur, dynamic, saturation, resonance)
 layer = [frame]
@@ -689,13 +697,13 @@ orchestrationState = [(part, dur)]
 
 
 ; orchestrationState -> [layer] -> [orchestration] -> music
-orchestrate_ offset state layers instns = 
+orchestrate_ offset state layers instns =
     let frames = map head layers
         layers = map tail layers
-        
+
         ; Filter out busy parts
         instns = map filterBusy state instns
-        
+
         ; Instrument each frame and compose it in parallel
         (state, musics) = unzip (map (instrumentFrame instns) frames)
         music  = foldr parallel () musics
@@ -704,19 +712,19 @@ orchestrate_ offset state layers instns =
 
 
 ; [orchestration] -> frame -> music
-instrumentFrame instns frame = 
+instrumentFrame instns frame =
     let instns = filterImpossible frame instns
         weightings = map (weightInstrumentation frame) instns
         instn = index (largest weightings) instns
         (getInstrumentor instns) frame
-    
+
 
 ; Filters busy instruments
 ; orchestrationState -> [orchestration]
-filterBusy state instns = ()      
+filterBusy state instns = ()
 
 ; Filter using the orchestration predicate
-; frame -> [orchestration] -> [orchestration]         
+; frame -> [orchestration] -> [orchestration]
 filterImpossible frame instns = ()
 
 ; [layer] -> [orchestration] -> music
@@ -725,7 +733,7 @@ orchestrate = orchestrate_ ()
 
 
 
-flutePizz                 = ([fl],       (60, 93),  (0, 12), (fn (x) 1), (fn ((pr, dr, sat)) 1)) 
+flutePizz                 = ([fl],       (60, 93),  (0, 12), (fn (x) 1), (fn ((pr, dr, sat)) 1))
 fluteToungeRam            = ([fl],       (60, 71),  (0, 1),  nil, nil)
 fluteShort                = ([fl],       (60, 93),  (0, 1),  nil, nil)
 fluteContinuous           = ([fl],       (60, 93),  (0, 12), nil, nil)
@@ -740,7 +748,7 @@ bassClarinetContinuous    = ([cl],       (38, 72),  (0, 12), nil, nil)
 bassClarinetContinuousFlz = ([cl],       (38, 72),  (0, 1),  nil, nil)
 bassoonShort              = ([bsn],      (34, 67),  (0, 1),  nil, nil)
 bassoonContinuous         = ([bsn],      (34, 67),  (0, 12), nil, nil)
-                                                    
+
 hornShort                 = ([hrn],      (48, 71),  (1, 1),  nil, nil)
 hornShortStopped          = ([hrn],      (48, 71),  (1, 1),  nil, nil)
 hornContinuous            = ([hrn],      (48, 71),  (1, 12), nil, nil)
@@ -755,7 +763,7 @@ tromboneShortMute         = ([tbn],      (40, 69),  (1, 1),  nil, nil)
 tromboneContinuous        = ([tbn],      (40, 69),  (1, 1),  nil, nil)
 tromboneContinuousMute    = ([tbn],      (40, 69),  (1, 1),  nil, nil)
 tromboneContinuousHarmon  = ([tbn],      (40, 69),  (1, 1),  nil, nil)
-                                         
+
 pianoPizz                 = ([pno],      (21, 108), (1, 1),  nil, nil)
 pianoShort                = ([pno],      (21, 108), (1, 1),  nil, nil)
 pianoResonant             = ([pno],      (21, 108), (1, 1),  nil, nil)
@@ -763,7 +771,7 @@ crotalesShort             = ([crot],     (60, 72),  (1, 1),  nil, nil)
 crotalesResonant          = ([crot],     (21, 108), (1, 8),  nil, nil)
 vibraphoneShort           = ([vib],      (53, 89),  (1, 1),  nil, nil)
 vibraphoneResonant        = ([vib],      (53, 89),  (1, 1),  nil, nil)
-                                         
+
 bassDrumResonant          = ([prc],      (),        (1, 1),  nil, nil)
 bassDrumRoll              = ([prc],      (),        (1, 1),  nil, nil)
 snareDrumResonant         = ([prc],      (),        (1, 1),  nil, nil)
@@ -800,7 +808,7 @@ bassColLegnoBat           = ([db],       (28, 52), (1, 1), nil, nil)
 bassContinous             = ([db],       (28, 52), (1, 1), nil, nil)
 bassContinousTrem         = ([db],       (28, 52), (1, 1), nil, nil)
 bassContinousHarm         = ([db],       (28, 52), (1, 1), nil, nil)
-                                                                
+
 orchestrations   = [ flutePizz, fluteToungeRam, fluteShort, fluteContinuous, fluteContinuousFlz
                    , oboeShort, oboeContinuous, clarinetShort, clarinetContinuous
                    , clarinetContinuousFlz, bassClarinetShort, bassClarinetContinuous
@@ -821,7 +829,7 @@ orchestrations   = [ flutePizz, fluteToungeRam, fluteShort, fluteContinuous, flu
                    , violaPizzHarm, violaColLegnoBat, violaContinous, violaContinousTrem, violaContinousHarm
                    , celloBartokPizz, celloPizz, celloPizzHarm, celloColLegnoBat, celloContinous, celloContinousTrem
                    , celloContinousHarm, bassBartokPizz, bassPizz, bassPizzHarm, bassColLegnoBat, bassContinous
-                   , bassContinousTrem, bassContinousHarm ] 
+                   , bassContinousTrem, bassContinousHarm ]
 
 
 
@@ -843,9 +851,6 @@ orchestrations   = [ flutePizz, fluteToungeRam, fluteShort, fluteContinuous, flu
 
 
 
- 
-
-                
 
 
 
@@ -858,10 +863,13 @@ orchestrations   = [ flutePizz, fluteToungeRam, fluteShort, fluteContinuous, flu
 
 
 
-events _ = melody (loop 1) (take 70 (loop 60)) 
 
 
-     
+
+events _ = melody (loop 1) (take 70 (loop 60))
+
+
+
 
 
 
