@@ -473,6 +473,9 @@ major root  = [root, root + 4, root + 7]
 
 range a = (a, a)
 
+; a -> range a -> bool
+isInRange (a, b) x = a <= x && x <= b
+    
 ; range -> range | ()
 overlap (a, b) (c, d) =
     if  (a > b || c > d) () else
@@ -668,14 +671,15 @@ dynamic    = double
 saturation = double
 resonance  = double
 
-frame = (dur, range pitch, range dur, dynamic, saturation, resonance)
+; frame = (dur, range pitch, range dur, dynamic, saturation, resonance)
+frame = (dur, pitch)
 layer = [frame]
 
-getFrameDur (d, _, _, _, _, _) = d
+; getFrameDur (d, _, _, _, _, _) = d
+getFrameDur (d, _) = d
 
-layers : [layer] = [ []
-                   , []
-                   , [] ]
+layers : [layer] = [ zip (map (+ 1) (rands 3)) (60 .. 70)
+                   , zip (map (+ 1) (rands 3)) (70 .. 80) ]
 
 
 
@@ -700,37 +704,69 @@ orchestrator  = _
 orchestration = ([part], predicate, weighter, orchestrator)
 usage         = (dur, part)
 
+getParts          (r, p, w, o) = r
+getPredicate      (r, p, w, o) = p
+getWeighter       (r, p, w, o) = w
+getOrchestrator   (r, p, w, o) = o
+setParts        r (_, p, w, o) = (r, p, w, o)
+withParts f x = setParts (f (getParts x)) x
+
+
 
 ; [layer] -> [orchestration] -> music
-orchestrate layers orchs = 
+orchestrate layers : [layer] orchs : [orchestration] = 
     let n       = length layers
         offsets = take n (loop 0)
         orchestrate_ offsets [] layers orchs
 
 ; [time] -> [usage] -> [layer] -> [orchestration] -> music
-orchestrate_ offsets usage layers orchs = match offsets
+orchestrate_ offsets : [time] usage : [usage] layers : [layer] orchs : [orchestration] = match offsets
     _ : () = ()
-    _      = let t       = minimum offsets        
-                 i       = findIndex t offsets
+    _      = do  t = minimum offsets        
+                 i = findIndex (== t) offsets
                  match (index i layers)
-                     _ : ()  = let offsets         = remove i offsets 
-                                   usage           = remove i usage
-                                   layers          = remove i layers
-                                   orchestrate_ offsets usage2 layers orchs
-                     (f, fs) = let offsets         = updateOffsets t i (getFrameDur f) offsets
-                                   usage           = updateUsage   t usage        
-                                   layers          = updateLayers  i fs layers
-                                   (usage2, music) = orchestrateFrame orchs usage f
-                                   offsetMusic t music 
-                                       ++ (delay orchestrate_ offsets usage2 layers orchs)
-        
-updateUsage t       = filter (fn (x) fst x <= 0) . map (fn (x) (fst x - t, snd x))
-updateOffsets t i d = update i d . map (+ (negate t))
-updateLayers i fs   = update i fs
+                     _ : ()  = let offsets = remove i offsets 
+                                   usage   = remove i usage
+                                   layers  = remove i layers
+                                   orchestrate_ offsets usage layers orchs
+                     (f, fs) = let offsets = updateOffsets t i (getFrameDur f) offsets
+                                   usage   = updateUsage   t usage        
+                                   layers  = updateLayers  i fs layers
+                                   let (usage, music) = orchestrateFrame usage f orchs
+                                       offsetMusic t music ++ (delay orchestrate_ offsets usage layers orchs)
 
 
-; usage -> frame -> orchs -> (usage, music) 
-; orchestrateFrame orchs usage frame
+updateOffsets t i d = update i d . map (+ (negate t))        
+updateUsage   t     = filter (fn (x) fst x <= 0) . map (fn (x) (fst x - t, snd x))
+updateLayers  i fs  = update i fs
+
+
+; TODO usage
+
+; [usage] -> frame -> [orchestration] -> ([usage], music) 
+orchestrateFrame usage : [usage] frame : frame orchs : [orchestration] =
+    do  orchs   = retain ((flip apply) frame . getPredicate) orchs
+        ; orchs   = withParts (filter ((flip elem) (map snd usage)))
+        weights = map    ((flip apply) frame . getWeighter) orchs
+        orch    = index (maximumIndex weights) orchs
+                
+        music = (getOrchestrator orch) frame
+        (usage, music)
+
+
+
+
+
+
+
+tracingOrchestration r (d, p) = map (setPart r) (melody [d] [p])
+
+flute = ([fl], (const true), (const 0.5), (tracingOrchestration fl)) 
+oboe  = ([ob], (const true), (const 0.5), (tracingOrchestration ob))
+
+
+
+orchestrations : [orchestration] = [flute, oboe]
 
 
 
