@@ -670,7 +670,8 @@ orchestrateFrame usage : [usage] frame : frame orchs : [orchestration] =
     do  orchs   = retain ((flip apply) frame . getPredicate) orchs        
         orchs   = map (withParts (filter ((flip elem) (map snd usage)))) orchs
         orchs   = filter ((== []) . getParts) orchs        
-        print ("--orchs: " ++ string (map (map getName) (map getParts orchs))) 
+        
+        ; print ("--orchs: " ++ string (map (map getName) (map getParts orchs))) 
         
         match orchs
             _ : () = error "No orchestrations available"
@@ -692,6 +693,7 @@ orchestrateFrame usage : [usage] frame : frame orchs : [orchestration] =
 info  : [setting] = [ ("title",  "Skikt")
                     , ("author", "Hans Hoglund 2011") ]
 
+initMarks         = [ ("tempo", 90) ]
 insts : [inst]    = [ ("perc1", "percussion",  [ "snare-drum"
                                                , "bass-drum"
                                                , "crash-cymbal"
@@ -721,6 +723,7 @@ db    : part = ("db",   "bass",           [ ("abbr", "Kb.") ])
 parts : [part] = [ fl, ob, cl, bsn, hrn, tpt, tbn
                  , pno, vib, crot, prc, vl1, vl2, vla, vc, db ]
 decls : [decl] = insts ++ parts
+
 
 snareDrum   = `snareDrum
 bassDrum    = `bassDrum
@@ -756,6 +759,7 @@ short = take 70
         loop 5
         loop (60, 70)
         loop (1/2, 1/2)
+        
         curve1
         loop 0.1
         loop 0.1
@@ -765,6 +769,7 @@ resonant = take 70
         loop 5
         loop (60, 70)
         loop (1/2, 1/2)
+        
         curve1
         loop 0.1
         loop 0.1
@@ -773,7 +778,8 @@ long = take 70
     zip6 
         loop 5
         loop (60, 70)
-        loop (1/2, 1/2)
+        loop (5, 5) 
+        
         curve1
         loop 0.1
         loop 0.1
@@ -914,41 +920,11 @@ orchestrations : [orchestration] =
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ; events _ = melody (loop 1) (take 700 (loop 60))
-events _ = orchestrate layers orchestrations
-
+events _ = 
+    do  print "resolving events..."
+        (x, xs) = orchestrate layers orchestrations
+        prepend (withMarks (++ initMarks) x) xs
 
 
 ; Main program
