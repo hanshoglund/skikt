@@ -678,8 +678,8 @@ layer = [frame]
 ; getFrameDur (d, _, _, _, _, _) = d
 getFrameDur (d, _) = d
 
-layers : [layer] = [ zip (map (+ 1) (rands 3)) (60 .. 70)
-                   , zip (map (+ 1) (rands 3)) (70 .. 80) ]
+layers : [layer] = [ take 30 (zip (map (+ 3) (rands 3)) (cycle (60 .. 70)))
+                   , take 30 (zip (map (+ 1) (rands 3)) (cycle (70 .. 80))) ]
 
 
 
@@ -717,10 +717,16 @@ withParts f x = setParts (f (getParts x)) x
 orchestrate layers : [layer] orchs : [orchestration] = 
     let n       = length layers
         offsets = take n (loop 0)
-        orchestrate_ offsets [] layers orchs
+        orchestrate_ 0 offsets [] layers orchs
 
 ; [time] -> [usage] -> [layer] -> [orchestration] -> music
-orchestrate_ offsets : [time] usage : [usage] layers : [layer] orchs : [orchestration] = match offsets
+orchestrate_ lastOffset : int offsets : [time] usage : [usage] layers : [layer] orchs : [orchestration] = 
+
+ ; do print lastOffset
+ ;    print offsets  
+    ; print (map fst usage)
+
+  match offsets
     _ : () = ()
     _      = do  t = minimum offsets        
                  i = findIndex (== t) offsets
@@ -728,15 +734,15 @@ orchestrate_ offsets : [time] usage : [usage] layers : [layer] orchs : [orchestr
                      _ : ()  = let offsets = remove i offsets 
                                    usage   = remove i usage
                                    layers  = remove i layers
-                                   orchestrate_ offsets usage layers orchs
+                                   orchestrate_ t offsets usage layers orchs
                      (f, fs) = let offsets = updateOffsets t i (getFrameDur f) offsets
-                                   usage   = updateUsage   t usage        
+                                   usage   = updateUsage   (t - lastOffset) usage        
                                    layers  = updateLayers  i fs layers
                                    let (usage, music) = orchestrateFrame usage f orchs
-                                       offsetMusic t music ++ (delay orchestrate_ offsets usage layers orchs)
+                                       offsetMusic t music ++ (delay orchestrate_ t offsets usage layers orchs)
 
 
-updateOffsets t i d = update i d . map (+ (negate t))        
+updateOffsets t i d xs = update i (index i xs + d) xs       
 updateUsage   t     = filter (fn (x) fst x <= 0) . map (fn (x) (fst x - t, snd x))
 updateLayers  i fs  = update i fs
 
@@ -746,11 +752,20 @@ updateLayers  i fs  = update i fs
 ; [usage] -> frame -> [orchestration] -> ([usage], music) 
 orchestrateFrame usage : [usage] frame : frame orchs : [orchestration] =
     do  orchs   = retain ((flip apply) frame . getPredicate) orchs
-        ; orchs   = withParts (filter ((flip elem) (map snd usage)))
+        
+        orchs   = map (withParts (filter ((flip elem) (map snd usage)))) orchs
+        orchs   = filter ((== []) . getParts) orchs
+        ; print ("usage: " ++ string usage)
+        ; print (map getParts orchs)
+        
         weights = map    ((flip apply) frame . getWeighter) orchs
         orch    = index (maximumIndex weights) orchs
                 
         music = (getOrchestrator orch) frame
+            
+        ; FIXME relies on orchestrators to set part for first event
+        part  = getPart (head music)
+        usage = prepend (getFrameDur frame, part) usage
         (usage, music)
 
 
@@ -759,7 +774,7 @@ orchestrateFrame usage : [usage] frame : frame orchs : [orchestration] =
 
 
 
-tracingOrchestration r (d, p) = map (setPart r) (melody [d] [p])
+tracingOrchestration r (d, p) = map (setVoice [1, 2] . setPart r) (melody [d] [p])
 
 flute = ([fl], (const true), (const 0.5), (tracingOrchestration fl)) 
 oboe  = ([ob], (const true), (const 0.5), (tracingOrchestration ob))
@@ -908,8 +923,8 @@ orchestrations : [orchestration] = [flute, oboe]
 
 
 
-events _ = melody (loop 1) (take 700 (loop 60))
-
+; events _ = melody (loop 1) (take 700 (loop 60))
+events _ = orchestrate layers orchestrations
 
 
 
