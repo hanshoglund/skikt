@@ -11,8 +11,9 @@ module Hans.Music.Skikt
 scoreEditor = "/Applications/Sibelius 6.app"
 fileDir     = "/Users/hans/Documents/Musik/Skikt/output/"
 fileName    = "out"
-preview     = true
+preview     = false
 fixClefs    = false
+verbose     = `orchestration & `output
 
 ; =============================================================================
 ; FOMUS
@@ -161,7 +162,7 @@ getMarks e = match e
     e : rest = (getRestMarks . expandEvent) e
 
 ; event -> prec | "+"
-getActualDur x = if (getTime x == ()) 0 else (getDur x)
+getActualDur x = if (getTime x == ()) then 0 else (getDur x)
 
 ; note -> pitch
 getPitch = getNotePitch . expandEvent
@@ -475,10 +476,10 @@ range a = (a, a)
     
 ; range -> range | ()
 overlap (a, b) (c, d) =
-    if  (a > b || c > d) () else
+    if  (a > b || c > d) then nil else
         let x = max a c
             y = min b d
-            if  (x > y) () else (x, y)
+            if  (x > y) then nil else (x, y)
 
 ; a -> range a -> bool
 isInRange (a, b) x = a <= x && x <= b
@@ -507,8 +508,8 @@ sample n = map mean . partitionInto n
 ;   int -> [prec] -> [prec] | [real] -> [real]
 ; interpolate n =
 
-sigToPos = map ((* 0.5)    . (+ 1.0))
-posToSig = map ((+ (-1.0)) . (* 2.0))
+sigToPos = map (fn (x) (x + 1.0) / 2.0)
+posToSig = map (fn (x) x * 2.0 - 1.0)
 
 
 ; Plotting
@@ -523,7 +524,7 @@ plotWindowPadding = (0, 23)
 plot ys = 
     let n  = length ys
         ys = match ys
-            ys : [prec] = map (flip (/) (maximum ys) . (* (snd plotWindowSize))) ys
+            ys : [prec] = map (flip (/) (maximum ys)    . (* (snd plotWindowSize))) ys
             ys : [real] = map ((* (snd plotWindowSize)) . rationalize . (* 0.5) . (+ 1.0)) ys
         plotMatrix (map (* (ceil (700 / n))) (0 .. n)) ys
 
@@ -533,7 +534,8 @@ plotf = plot . map rationalize
 FUNCTION_CANVAS = class "vitry.runtime.util.FunctionCanvas"
 COMPONENT       = class "java.awt.Component"
 FRAME           = class "java.awt.Frame"
-DRAW_POLYLINE   = method (class "java.awt.Graphics") "drawPolyline" [class "[I", class "[I", class "int"]
+GRAPHICS        = class "java.awt.Graphics"
+DRAW_POLYLINE   = method GRAPHICS "drawPolyline" [class "[I", class "[I", class "int"]
 FRAME_ADD       = method FRAME "add" [COMPONENT]
 FRAME_SET_SIZE  = method FRAME "setSize" [`int, `int]
 FRAME_SHOW      = method FRAME "show" []
@@ -553,10 +555,10 @@ plotMatrix xs ys =
                 INT_PRIM (snd plotWindowSize + snd plotWindowPadding)
             if  (oldFrame != nil)
                 FRAME_DISPOSE oldFrame
-                ()
+                nil
             FRAME_SHOW frame
             set window frame
-            ()
+            nil
 
 paintPlot xs ys n g =
     DRAW_POLYLINE g
@@ -577,16 +579,14 @@ lyFile  = fileDir ++ fileName ++ ".ly"
 export text = do
     writeFile fmsFile text
     if preview
-        do run [ "fomus", fmsFile, "-o", lyFile ]
-        ; else
+        do run [ "fomus", fmsFile, "-o", lyFile ] 
         do run [ "fomus", fmsFile, "-o", xmlFile ]
             if fixClefs
-                do print "adjusting fomus clefs..."
+                do  print "adjusting fomus clefs..."
                     replaceFile xmlFile
                         [ "<sign>F</sign>", "<sign>C</sign>" ]
                         [ "<sign>F</sign><line>4</line>", "<sign>C</sign><line>3</line>" ]
-                ; else
-                ()
+                nil
             ; Open the score
             run [ "open", "-a", scoreEditor, xmlFile ]
 
@@ -640,21 +640,19 @@ setParts        r (_, p, w, o) = (r, p, w, o)
 withParts f x = setParts (f (getParts x)) x
 
 
-
 ; [layer] -> [orchestration] -> music
 orchestrate layers : [layer] orchs : [orchestration] = 
-    let n       = length layers
-        offsets = take n (loop 0)
-        orchestrate_ 0 offsets [] layers orchs
+    let offsets = take (length layers) (loop 0)
+        delay orchestrate_ 0 offsets [] layers orchs
 
 ; [time] -> [usage] -> [layer] -> [orchestration] -> music
 orchestrate_ lastOffset : int offsets : [time] usage : [usage] layers : [layer] orchs : [orchestration] = 
     match offsets
-        _ : () = ()
+        _ : [] = []
         _      = do  t = minimum offsets        
                      i = findIndex (== t) offsets
                      match (index i layers)
-                         _ : ()  = do  offsets = remove i offsets 
+                         _ : []  = do  offsets = remove i offsets 
                                        usage   = remove i usage
                                        layers  = remove i layers
                                        orchestrate_ t offsets usage layers orchs
@@ -669,19 +667,13 @@ updateUsage   t     = filter (fn (x) fst x <= 0) . map (fn (x) (fst x - t, snd x
 updateLayers  i fs  = update i fs
 
 ; [usage] -> frame -> [orchestration] -> ([usage], music) 
-orchestrateFrame usage : [usage] frame : frame orchs : [orchestration] =
-  ; do  print ("  usage: " ++ string usage)
-  ;     print ("  frame: " ++ string frame)
-                
+orchestrateFrame usage : [usage] frame : frame orchs : [orchestration] =                
     do  orchs   = retain ((flip apply) frame . getPredicate) orchs        
         orchs   = map (withParts (filter ((flip elem) (map snd usage)))) orchs
         orchs   = filter ((== []) . getParts) orchs        
         
-        ; print ("--orchs: " ++ string (map (map getName) (map getParts orchs))) 
-        
         match orchs
-            ; _ : () = error "No orchestrations available"
-            _ : () = do  print "warning: No orchestration"
+            _ : [] = do  print "warning: No orchestration"
                          (usage, [])
             _      = do  weights = map  ((flip apply) frame . getWeighter) orchs
 
@@ -691,7 +683,7 @@ orchestrateFrame usage : [usage] frame : frame orchs : [orchestration] =
                          orch    = index (maximumIndex weights) orchs                
                          music = (getOrchestrator orch) frame
             
-                         ; FIXME relies on orchestrators to set part for first event
+                         ; TODO relies on orchestrators to set part for first event
                          part  = getPart (head music)
                          usage = prepend (getFrameDur frame, part) usage
                          (usage, music)
@@ -705,7 +697,7 @@ orchestrateFrame usage : [usage] frame : frame orchs : [orchestration] =
 info  : [setting] = [ ("title",  "Skikt")
                     , ("author", "Hans Hoglund 2011") ]
 
-initMarks         = [ ("tempo", 90) ]
+initMarks         = [ ("tempo", "*1/4* = #", 90) ]
 insts : [inst]    = [ ("perc1", "percussion",  [ "snare-drum"
                                                , "bass-drum"
                                                , "crash-cymbal"
@@ -736,17 +728,11 @@ parts : [part] = [ fl, ob, cl, bsn, hrn, tpt, tbn
                  , pno, vib, crot, prc, vl1, vl2, vla, vc, db ]
 decls : [decl] = insts ++ parts
 
-
-snareDrum   = `snareDrum
-bassDrum    = `bassDrum
-smallCymbal = `smallCymbal
-largeCymbal = `largeCymbal
-
 percNote inst = match inst
-    x : bassDrum    = 65
-    x : snareDrum   = 72
-    x : smallCymbal = 76
-    x : largeCymbal = 79
+    x : `bassDrum    = 65
+    x : `snareDrum   = 72
+    x : `smallCymbal = 76
+    x : `largeCymbal = 79
 
 
 
@@ -768,7 +754,7 @@ curve9 = (sigToPos . take 70 . sinG . addG (map (* 0.1) ((sinG . sinG) (line 60)
 
 short = take 60
     zip6 
-        loop 5
+        map (+ 1) (rands 5)
         loop (65, 67)
         loop (1/2, 1/2)
         
@@ -960,19 +946,19 @@ orchestrations   = [ flutePizz, fluteToungeRam, fluteShort, fluteContinuous, flu
 
 
 
-; events _ = melody (loop 1) (take 700 (loop 60))
 events _ = 
     do  print "resolving orchestration..."
         (x, xs) = orchestrate layers orchestrations
-        prepend (withMarks (++ initMarks) x) xs
-
+        if preview
+            prepend (withMarks (++ initMarks) x) xs
+            prepend x xs
 
 ; Main program
 
-printEvents _ = do force (map print (events ()))
-                ()
-main _ = (export . fomus) (events (), decls, info)
-test _ = fomus (events (), decls, info)
-dump _ = join "\n" (events ())
+printEvents _ = do force (map print (events nil))
+                   nil
+main _        = (export . fomus) (events nil, decls, info)
+test _        = fomus (events nil, decls, info)
+dump _        = join "\n" (events nil)
 
 
