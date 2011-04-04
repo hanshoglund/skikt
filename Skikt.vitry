@@ -484,7 +484,7 @@ overlap (a, b) (c, d) =
             if  (x > y) () else (x, y)
 
 ; range prec -> prec
-; randomRange (rangeLow, rangeHigh) = random (rangeHigh - rangeLow) + rangeLow
+randomRange (rangeLow, rangeHigh) = random (succ rangeHigh - rangeLow) + rangeLow
 
 
 ; Curves
@@ -566,8 +566,6 @@ paintPlot xs ys n g =
         INT_PRIM n
 
 
-
-; =============================================================================
 ; Output
 
 fmsFile = fileDir ++ fileName ++ ".fms"
@@ -594,10 +592,104 @@ export text = do
             run [ "open", "-a", scoreEditor, xmlFile ]
 
 
+; =============================================================================
+; Layer and orchestration engine
+
+; A layer is a sequence of frames, each of which has a duration
+; and some attributes
+
+dynamic    = double
+saturation = double
+resonance  = double
+
+frame = (dur, range pitch, range dur, dynamic, saturation, resonance)
+layer = [frame]
+
+getFrameDur (d, _, _, _, _, _) = d
+
+
+; An orchestration is a list of parts, along with two functions
+; to indicate its appropriateness for some frame, and a function
+; to perform the orchestration.
+;   - The predicate states an absolute condition for the
+;     orchestration to be used, such as pitch range.
+;   - The weigher states a relative appropriatness of the
+;     orchestration based on its quality. A higher weighting
+;     means that the orchestration is more likely to be chosen.
+;   - The orchestrator performs the orchestration.
+
+; FIXME we can not represent function types yet
+; predicate    : frame -> boolean
+; weighter     : frame -> double
+; orchestrator : state -> frame -> (state, music)
+predicate     = _
+weighter      = _
+orchestrator  = _
+orchestration = ([part], predicate, weighter, orchestrator)
+usage         = (dur, part)
+
+getParts          (r, p, w, o) = r
+getPredicate      (r, p, w, o) = p
+getWeighter       (r, p, w, o) = w
+getOrchestrator   (r, p, w, o) = o
+setParts        r (_, p, w, o) = (r, p, w, o)
+withParts f x = setParts (f (getParts x)) x
+
+
+
+; [layer] -> [orchestration] -> music
+orchestrate layers : [layer] orchs : [orchestration] = 
+    let n       = length layers
+        offsets = take n (loop 0)
+        orchestrate_ 0 offsets [] layers orchs
+
+; [time] -> [usage] -> [layer] -> [orchestration] -> music
+orchestrate_ lastOffset : int offsets : [time] usage : [usage] layers : [layer] orchs : [orchestration] = 
+    match offsets
+        _ : () = ()
+        _      = do  t = minimum offsets        
+                     i = findIndex (== t) offsets
+                     match (index i layers)
+                         _ : ()  = do  offsets = remove i offsets 
+                                       usage   = remove i usage
+                                       layers  = remove i layers
+                                       orchestrate_ t offsets usage layers orchs
+                         (f, fs) = do  offsets = updateOffsets t i (getFrameDur f) offsets
+                                       usage   = updateUsage   (t - lastOffset) usage        
+                                       layers  = updateLayers  i fs layers
+                                       let (usage, music) = orchestrateFrame usage f orchs
+                                           offsetMusic t music ++ (delay orchestrate_ t offsets usage layers orchs)
+
+updateOffsets t i d xs = update i (index i xs + d) xs       
+updateUsage   t     = filter (fn (x) fst x <= 0) . map (fn (x) (fst x - t, snd x))
+updateLayers  i fs  = update i fs
+
+; [usage] -> frame -> [orchestration] -> ([usage], music) 
+orchestrateFrame usage : [usage] frame : frame orchs : [orchestration] =
+  ; do  print ("--usage: " ++ string usage)
+  ;     print ("--frame: " ++ string frame)
+                
+    do  orchs   = retain ((flip apply) frame . getPredicate) orchs        
+        orchs   = map (withParts (filter ((flip elem) (map snd usage)))) orchs
+        orchs   = filter ((== []) . getParts) orchs        
+        print ("--orchs: " ++ string (map (map getName) (map getParts orchs))) 
+        
+        match orchs
+            _ : () = error "No orchestrations available"
+            _      = let weights = map  ((flip apply) frame . getWeighter) orchs
+                         orch    = index (maximumIndex weights) orchs                
+                         music = (getOrchestrator orch) frame
+            
+                         ; FIXME relies on orchestrators to set part for first event
+                         part  = getPart (head music)
+                         usage = prepend (getFrameDur frame, part) usage
+                         (usage, music)
+
 
 
 
 ; =============================================================================
+; Main data
 
 info  : [setting] = [ ("title",  "Skikt")
                     , ("author", "Hans Hoglund 2011") ]
@@ -646,10 +738,6 @@ percNote inst = match inst
     x : largeCymbal = 79
 
 
-
-
-
-
 curve1 = (sinG . zipWith (*) (line 4700) . cosG) (line 700)
 curve2 = (sinG . zipWith (*) (line 4700) . cosG) (line 300)
 curve3 = (sinG . zipWith (+) (map (* 0.1) (sinG (line 300)))) (line 1800)
@@ -657,139 +745,19 @@ curve4 = (sinG . (map (+ 0.11))) (line 1800)
 curve5 = (sinG . (map (+ 0.3))) (line 1800)
 curve6 = (sinG . (map (+ 0.7))) (line 1800)
 curve7 = (sinG . zipWith (+) (map (* 0.1) ((sinG . sinG) (line 600)))) (line 600)
-                                                                  
+
+layers : [layer] = [ take 50 (zip6 (loop 5) (loop (60, 70)) (loop (1/2,2)) (loop 0.1) (loop 0.1) (loop 0.1))]
 
 
 
 
-
-
-; A layer is a sequence of frames, each of which has a duration
-; and some attributes
-
-dynamic    = double
-saturation = double
-resonance  = double
-
-; frame = (dur, range pitch, range dur, dynamic, saturation, resonance)
-frame = (dur, pitch)
-layer = [frame]
-
-; getFrameDur (d, _, _, _, _, _) = d
-getFrameDur (d, _) = d
-
-layers : [layer] = [ take 40 (zip (map (+ 1) (rands 6)) (cycle (50 .. 52)))
-                   , take 40 (zip (map (+ 1) (rands 6)) (cycle (60 .. 62)))
-                   , take 40 (zip (map (+ 1) (rands 6)) (cycle (60 .. 62)))
-                   , take 40 (zip (map (+ 1) (rands 6)) (cycle (60 .. 62)))
-                   , take 40 (zip (map (+ 1) (rands 6)) (cycle (60 .. 62)))
-                   , take 40 (zip (map (+ 1) (rands 6)) (cycle (60 .. 62)))
-                   , take 30 (zip (map (+ 1) (rands 6)) (cycle (70 .. 72))) ]
-
-
-
-
-; An orchestration is a list of parts, along with two functions
-; to indicate its appropriateness for some frame, and a function
-; to perform the orchestration.
-;   - The predicate states an absolute condition for the
-;     orchestration to be used, such as pitch range.
-;   - The weigher states a relative appropriatness of the
-;     orchestration based on its quality. A higher weighting
-;     means that the orchestration is more likely to be chosen.
-;   - The orchestrator performs the orchestration.
-
-; FIXME we can not represent function types yet
-; predicate    : frame -> boolean
-; weighter     : frame -> double
-; orchestrator : state -> frame -> (state, music)
-predicate     = _
-weighter      = _
-orchestrator  = _
-orchestration = ([part], predicate, weighter, orchestrator)
-usage         = (dur, part)
-
-getParts          (r, p, w, o) = r
-getPredicate      (r, p, w, o) = p
-getWeighter       (r, p, w, o) = w
-getOrchestrator   (r, p, w, o) = o
-setParts        r (_, p, w, o) = (r, p, w, o)
-withParts f x = setParts (f (getParts x)) x
-
-
-
-; [layer] -> [orchestration] -> music
-orchestrate layers : [layer] orchs : [orchestration] = 
-    let n       = length layers
-        offsets = take n (loop 0)
-        orchestrate_ 0 offsets [] layers orchs
-
-; [time] -> [usage] -> [layer] -> [orchestration] -> music
-orchestrate_ lastOffset : int offsets : [time] usage : [usage] layers : [layer] orchs : [orchestration] = 
-
- do print ("----------")
-    ; print ("offsets " ++ string offsets)  
-    ; print ("usage   " ++ string (map fst usage))
-
-  match offsets
-    _ : () = ()
-    _      = do  t = minimum offsets        
-                 i = findIndex (== t) offsets
-                 match (index i layers)
-                     _ : ()  = do  offsets = remove i offsets 
-                                   usage   = remove i usage
-                                   layers  = remove i layers
-                                   orchestrate_ t offsets usage layers orchs
-                     (f, fs) = do  offsets = updateOffsets t i (getFrameDur f) offsets
-                                   usage   = updateUsage   (t - lastOffset) usage        
-                                   layers  = updateLayers  i fs layers
-                                   let (usage, music) = orchestrateFrame usage f orchs
-                                       offsetMusic t music ++ (delay orchestrate_ t offsets usage layers orchs)
-
-
-updateOffsets t i d xs = update i (index i xs + d) xs       
-updateUsage   t     = filter (fn (x) fst x <= 0) . map (fn (x) (fst x - t, snd x))
-updateLayers  i fs  = update i fs
-
-
-; TODO usage
-
-; [usage] -> frame -> [orchestration] -> ([usage], music) 
-orchestrateFrame usage : [usage] frame : frame orchs : [orchestration] =
-    do  print ("--usage: " ++ string usage)
-        print ("--frame: " ++ string frame)
-        
-        
-        orchs   = retain ((flip apply) frame . getPredicate) orchs        
-        orchs   = map (withParts (filter ((flip elem) (map snd usage)))) orchs
-        orchs   = filter ((== []) . getParts) orchs
-        
-        print ("--orchs: " ++ string (map (map getName) (map getParts orchs))) 
-        
-        match orchs
-            _ : () = error "No orchestrations available"
-            _      = let weights = map  ((flip apply) frame . getWeighter) orchs
-                         orch    = index (maximumIndex weights) orchs                
-                         music = (getOrchestrator orch) frame
-            
-                         ; FIXME relies on orchestrators to set part for first event
-                         part  = getPart (head music)
-                         usage = prepend (getFrameDur frame, part) usage
-                         (usage, music)
-
-
-
-
-
-
-
-trivialOrchestration r (d, p) = map (setVoice [1, 2] . setPart r) (melody [d] [p])
+trivialOrchestration r (d, pr, dr, n, s, e) = map (setVoice [1, 2] . setPart r . setDyn n) (melody [randomRange dr] [randomRange pr])
 
 orchestrations : [orchestration] = 
-    [ ([fl],  (const true), (const 0.5), (trivialOrchestration fl)) 
-    , ([ob],  (const true), (const 0.5), (trivialOrchestration ob))
-    , ([cl],  (const true), (const 0.5), (trivialOrchestration cl))
-    , ([bsn], (const true), (const 0.5), (trivialOrchestration bsn))
+    [ ([fl],  (const false), (const 0.5), (trivialOrchestration fl)) 
+    , ([ob],  (const false), (const 0.5), (trivialOrchestration ob))
+    , ([cl],  (const false), (const 0.5), (trivialOrchestration cl))
+    , ([bsn], (const false), (const 0.5), (trivialOrchestration bsn))
     , ([hrn], (const true), (const 0.5), (trivialOrchestration hrn))
     , ([tpt], (const true), (const 0.5), (trivialOrchestration tpt))
     , ([tbn], (const true), (const 0.5), (trivialOrchestration tbn))
