@@ -493,6 +493,8 @@ noise  = unfold (fn (x) (randomDouble () * 2.0 - 1.0, 0)) 0
 line n = cycle (map (approx . flip (/) n) (0 .. n))
 sinG   = map (sin . (* 2.0 * pi))
 cosG   = map (cos . (* 2.0 * pi))
+addG   = zipWith (+)
+mulG   = zipWith (*)
 
 
 ; Returns a list of length n approximating the values of the given
@@ -504,31 +506,27 @@ sample n = map mean . partitionInto n
 ;   int -> [prec] -> [prec] | [real] -> [real]
 ; interpolate n =
 
-signalToPositive = map ((* 0.5)    . (+ 1.0))
-positiveToSignal = map ((+ (-1.0)) . (* 2.0))
+sigToPos = map ((* 0.5)    . (+ 1.0))
+posToSig = map ((+ (-1.0)) . (* 2.0))
 
 
 ; Plotting
 
 plotWindowSize    = (700, 200)
-plotWindowPadding = (0, 22)
+plotWindowPadding = (0, 23)
 
 ; Displays a simple plot of the given list of numbers in a window
 ; Precise numbers may be of any magnitude
 ; Real numbers are assumed to be in the range -1.0 < x < 1.0
 ;   [prec] | [real] -> ()
-plot xs = match xs
-    _ : [prec] =
-        let n  = length xs
-            m  = maximum xs
-            ys = map (flip (/) m . (* (snd plotWindowSize))) xs
-            plotMatrix (0 .. n) ys
-    _ : [real] =
-        let n  = length xs
-            ys = map ((* (snd plotWindowSize)) . rationalize . (* 0.5) . (+ 1.0)) xs
-            plotMatrix (0 .. n) ys
+plot ys = 
+    let n  = length ys
+        ys = match ys
+            ys : [prec] = map (flip (/) (maximum ys) . (* (snd plotWindowSize))) ys
+            ys : [real] = map ((* (snd plotWindowSize)) . rationalize . (* 0.5) . (+ 1.0)) ys
+        plotMatrix (map (* (ceil (700 / n))) (0 .. n)) ys
 
-plotSome = plot . take (fst plotWindowSize)
+plotf = plot . map rationalize
 
 
 FUNCTION_CANVAS = class "vitry.runtime.util.FunctionCanvas"
@@ -720,10 +718,8 @@ vc    : part = ("vc",   "cello",          [ ("abbr", "Vc.")
                                           , ("name", "Violoncello") ])
 db    : part = ("db",   "bass",           [ ("abbr", "Kb.") ])
 
-parts : [part] = [ fl, ob, cl, bsn
-                 , hrn, tpt, tbn
-                 , pno, vib, crot, prc
-                 , vl1, vl2, vla, vc, db ]
+parts : [part] = [ fl, ob, cl, bsn, hrn, tpt, tbn
+                 , pno, vib, crot, prc, vl1, vl2, vla, vc, db ]
 decls : [decl] = insts ++ parts
 
 snareDrum   = `snareDrum
@@ -738,26 +734,38 @@ percNote inst = match inst
     x : largeCymbal = 79
 
 
-curve1 = (sinG . zipWith (*) (line 4700) . cosG) (line 700)
-curve2 = (sinG . zipWith (*) (line 4700) . cosG) (line 300)
-curve3 = (sinG . zipWith (+) (map (* 0.1) (sinG (line 300)))) (line 1800)
-curve4 = (sinG . (map (+ 0.11))) (line 1800)
-curve5 = (sinG . (map (+ 0.3))) (line 1800)
-curve6 = (sinG . (map (+ 0.7))) (line 1800)
-curve7 = (sinG . zipWith (+) (map (* 0.1) ((sinG . sinG) (line 600)))) (line 600)
-
-layers : [layer] = [ take 50 (zip6 (loop 5) (loop (60, 70)) (loop (1/2,2)) (loop 0.1) (loop 0.1) (loop 0.1))]
 
 
+curve1 = (sigToPos . take 70 . map (* 1.2) . sinG . mulG (line 470) . cosG) (line 70)
+curve2 = (sigToPos . map negate . posToSig) curve1
+curve3 = reverse curve1
+
+curve4 = (sigToPos . take 70 . sinG . mulG (line 470) . cosG) (line 30)
+curve5 = (sigToPos . take 70 . sinG . addG (map (* 0.1) (sinG (line 30)))) (line 180)
+curve6 = (sigToPos . take 70 . sinG . (map (+ 0.11))) (line 180)
+curve7 = (sigToPos . take 70 . sinG . (map (+ 0.3))) (line 100)
+curve8 = (sigToPos . take 70 . sinG . (map (+ 0.7))) (line 100)
+curve9 = (sigToPos . take 70 . sinG . addG (map (* 0.1) ((sinG . sinG) (line 60)))) (line 60)
 
 
-trivialOrchestration r (d, pr, dr, n, s, e) = map (setVoice [1, 2] . setPart r . setDyn n) (melody [randomRange dr] [randomRange pr])
+
+layer1 = take 70 (zip6 (loop 5) (loop (60, 70)) (loop (1/2,1/2)) (curve1) (loop 0.1) (loop 0.1))
+
+layers = [layer1]
+
+
+
+
+
+
+trivialOrchestration r (d, pr, dr, n, s, e) = 
+    map (setVoice [1, 2] . setPart r . setDyn n) (melody [randomRange dr] [randomRange pr])
 
 orchestrations : [orchestration] = 
-    [ ([fl],  (const false), (const 0.5), (trivialOrchestration fl)) 
-    , ([ob],  (const false), (const 0.5), (trivialOrchestration ob))
-    , ([cl],  (const false), (const 0.5), (trivialOrchestration cl))
-    , ([bsn], (const false), (const 0.5), (trivialOrchestration bsn))
+    [ ([fl],  (const true), (const 0.5), (trivialOrchestration fl)) 
+    , ([ob],  (const true), (const 0.5), (trivialOrchestration ob))
+    , ([cl],  (const true), (const 0.5), (trivialOrchestration cl))
+    , ([bsn], (const true), (const 0.5), (trivialOrchestration bsn))
     , ([hrn], (const true), (const 0.5), (trivialOrchestration hrn))
     , ([tpt], (const true), (const 0.5), (trivialOrchestration tpt))
     , ([tbn], (const true), (const 0.5), (trivialOrchestration tbn))
