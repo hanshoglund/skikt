@@ -341,7 +341,7 @@ sequence a b = (`seq, a, b)
 parallel a b = (`par, a, b)
 
 ; time -> [event] -> [event]
-offset time = map (withTime (fn (x) match x (x : prec = x + time) (_ = x)))
+offsetMusic time = map (withTime (fn (x) match x (x : prec = x + time) (_ = x)))
 
 ; music -> dur
 duration m = match m
@@ -351,7 +351,7 @@ duration m = match m
 
 ; music -> [event]
 musicToEvents m = match m
-    (_ : `seq, a, b) = musicToEvents a ++ offset (duration a) (musicToEvents b)
+    (_ : `seq, a, b) = musicToEvents a ++ offsetMusic (duration a) (musicToEvents b)
     (_ : `par, a, b) = musicToEvents a ++ musicToEvents b
     m : [event]      = m
 
@@ -517,7 +517,7 @@ plotWindowPadding = (0, 22)
 plot xs = match xs
     _ : [prec] =
         let n  = length xs
-            m  = largest xs
+            m  = maximum xs
             ys = map (flip (/) m . (* (snd plotWindowSize))) xs
             plotMatrix (0 .. n) ys
     _ : [real] =
@@ -540,11 +540,11 @@ FRAME_DISPOSE   = method FRAME "dispose" []
 window          = ref ()
 
 plotMatrix xs ys =
-    let zs     = map ((+ (snd plotWindowSize)) . negate) ys
-        n      = min (length xs) (length ys)
-        canvas = new FUNCTION_CANVAS [paintPlot xs zs n]
+    let zs       = map ((+ (snd plotWindowSize)) . negate) ys
+        n        = min (length xs) (length ys)
+        canvas   = new FUNCTION_CANVAS [paintPlot xs zs n]
         oldFrame = get window
-        frame  = new FRAME ["Vitry"]
+        frame    = new FRAME ["Vitry"]
         do  FRAME_ADD frame canvas
             FRAME_SET_SIZE frame
                 INT_PRIM (fst plotWindowSize + fst plotWindowPadding)
@@ -644,6 +644,9 @@ percNote inst = match inst
 
 
 
+
+
+
 curve1 = (sinG . zipWith (*) (line 4700) . cosG) (line 700)
 curve2 = (sinG . zipWith (*) (line 4700) . cosG) (line 300)
 curve3 = (sinG . zipWith (+) (map (* 0.1) (sinG (line 300)))) (line 1800)
@@ -651,6 +654,11 @@ curve4 = (sinG . (map (+ 0.11))) (line 1800)
 curve5 = (sinG . (map (+ 0.3))) (line 1800)
 curve6 = (sinG . (map (+ 0.7))) (line 1800)
 curve7 = (sinG . zipWith (+) (map (* 0.1) ((sinG . sinG) (line 600)))) (line 600)
+                                                                  
+
+
+
+
 
 
 ; A layer is a sequence of frames, each of which has a duration
@@ -662,6 +670,8 @@ resonance  = double
 
 frame = (dur, range pitch, range dur, dynamic, saturation, resonance)
 layer = [frame]
+
+getFrameDur (d, _, _, _, _, _) = d
 
 layers : [layer] = [ []
                    , []
@@ -684,152 +694,43 @@ layers : [layer] = [ []
 ; predicate    : frame -> boolean
 ; weighter     : frame -> double
 ; orchestrator : state -> frame -> (state, music)
-predicate            = _
-weighter             = _
-orchestrator         = _
+predicate     = _
+weighter      = _
+orchestrator  = _
+orchestration = ([part], predicate, weighter, orchestrator)
+usage         = (dur, part)
 
-orchestration      = ([part], predicate, weighter, orchestrator)
-
-; An orchestrationState tracks the duration left to play in each part,
-; to prevent the orchestrate function from using instrument that is
-; already playing
-orchestrationState = [(part, dur)]
-
-
-; orchestrationState -> [layer] -> [orchestration] -> music
-orchestrate_ offset state layers instns =
-    let frames = map head layers
-        layers = map tail layers
-
-        ; Filter out busy parts
-        instns = map filterBusy state instns
-
-        ; Instrument each frame and compose it in parallel
-        (state, musics) = unzip (map (instrumentFrame instns) frames)
-        music  = foldr parallel () musics
-        ; state  = updateState music state XXX
-        sequence music (orchestrate (offset + dur music) state layers instns)
-
-
-; [orchestration] -> frame -> music
-instrumentFrame instns frame =
-    let instns = filterImpossible frame instns
-        weightings = map (weightInstrumentation frame) instns
-        instn = index (largest weightings) instns
-        (getInstrumentor instns) frame
-
-
-; Filters busy instruments
-; orchestrationState -> [orchestration]
-filterBusy state instns = ()
-
-; Filter using the orchestration predicate
-; frame -> [orchestration] -> [orchestration]
-filterImpossible frame instns = ()
 
 ; [layer] -> [orchestration] -> music
-orchestrate = orchestrate_ ()
+orchestrate layers orchs = 
+    let n       = length layers
+        offsets = take n (loop 0)
+        orchestrate_ offsets [] layers orchs
+
+; [time] -> [usage] -> [layer] -> [orchestration] -> music
+orchestrate_ offsets usage layers orchs = match offsets
+    _ : () = ()
+    _      = let t       = minimum offsets        
+                 i       = findIndex t offsets
+                 match (index i layers)
+                     _ : ()  = let offsets         = remove i offsets 
+                                   usage           = remove i usage
+                                   layers          = remove i layers
+                                   orchestrate_ offsets usage2 layers orchs
+                     (f, fs) = let offsets         = updateOffsets t i (getFrameDur f) offsets
+                                   usage           = updateUsage   t usage        
+                                   layers          = updateLayers  i fs layers
+                                   (usage2, music) = orchestrateFrame orchs usage f
+                                   offsetMusic t music 
+                                       ++ (delay orchestrate_ offsets usage2 layers orchs)
+        
+updateUsage t       = filter (fn (x) fst x <= 0) . map (fn (x) (fst x - t, snd x))
+updateOffsets t i d = update i d . map (+ (negate t))
+updateLayers i fs   = update i fs
 
 
-
-
-flutePizz                 = ([fl],       (60, 93),  (0, 12), (fn (x) 1), (fn ((pr, dr, sat)) 1))
-fluteToungeRam            = ([fl],       (60, 71),  (0, 1),  nil, nil)
-fluteShort                = ([fl],       (60, 93),  (0, 1),  nil, nil)
-fluteContinuous           = ([fl],       (60, 93),  (0, 12), nil, nil)
-fluteContinuousFlz        = ([fl],       (60, 93),  (0, 12), nil, nil)
-oboeShort                 = ([ob],       (62, 88),  (0, 1),  nil, nil)
-oboeContinuous            = ([ob],       (62, 88),  (0, 12), nil, nil)
-clarinetShort             = ([cl],       (50, 86),  (0, 1),  nil, nil)
-clarinetContinuous        = ([cl],       (50, 86),  (0, 12), nil, nil)
-clarinetContinuousFlz     = ([cl],       (50, 86),  (0, 12), nil, nil)
-bassClarinetShort         = ([cl],       (38, 72),  (0, 1),  nil, nil)
-bassClarinetContinuous    = ([cl],       (38, 72),  (0, 12), nil, nil)
-bassClarinetContinuousFlz = ([cl],       (38, 72),  (0, 1),  nil, nil)
-bassoonShort              = ([bsn],      (34, 67),  (0, 1),  nil, nil)
-bassoonContinuous         = ([bsn],      (34, 67),  (0, 12), nil, nil)
-
-hornShort                 = ([hrn],      (48, 71),  (1, 1),  nil, nil)
-hornShortStopped          = ([hrn],      (48, 71),  (1, 1),  nil, nil)
-hornContinuous            = ([hrn],      (48, 71),  (1, 12), nil, nil)
-hornContinuousStopped     = ([hrn],      (48, 71),  (1, 12), nil, nil)
-trumpetShort              = ([tpt],      (53, 81),  (1, 1),  nil, nil)
-trumpetShortMute          = ([tpt],      (53, 81),  (1, 1),  nil, nil)
-trumpetContinuous         = ([tpt],      (53, 81),  (1, 1),  nil, nil)
-trumpetContinuousMute     = ([tpt],      (53, 81),  (1, 1),  nil, nil)
-trumpetContinuousHarmon   = ([tpt],      (53, 81),  (1, 1),  nil, nil)
-tromboneShort             = ([tbn],      (40, 69),  (1, 1),  nil, nil)
-tromboneShortMute         = ([tbn],      (40, 69),  (1, 1),  nil, nil)
-tromboneContinuous        = ([tbn],      (40, 69),  (1, 1),  nil, nil)
-tromboneContinuousMute    = ([tbn],      (40, 69),  (1, 1),  nil, nil)
-tromboneContinuousHarmon  = ([tbn],      (40, 69),  (1, 1),  nil, nil)
-
-pianoPizz                 = ([pno],      (21, 108), (1, 1),  nil, nil)
-pianoShort                = ([pno],      (21, 108), (1, 1),  nil, nil)
-pianoResonant             = ([pno],      (21, 108), (1, 1),  nil, nil)
-crotalesShort             = ([crot],     (60, 72),  (1, 1),  nil, nil)
-crotalesResonant          = ([crot],     (21, 108), (1, 8),  nil, nil)
-vibraphoneShort           = ([vib],      (53, 89),  (1, 1),  nil, nil)
-vibraphoneResonant        = ([vib],      (53, 89),  (1, 1),  nil, nil)
-
-bassDrumResonant          = ([prc],      (),        (1, 1),  nil, nil)
-bassDrumRoll              = ([prc],      (),        (1, 1),  nil, nil)
-snareDrumResonant         = ([prc],      (),        (1, 1),  nil, nil)
-snareDrumRoll             = ([prc],      (),        (1, 1),  nil, nil)
-largeCymbalResonant       = ([prc],      (),        (1, 1),  nil, nil)
-largeCymbalRoll           = ([prc],      (),        (1, 1),  nil, nil)
-woodblockShort            = ([prc],      (),        (1, 1),  nil, nil)
-
-violinBartokPizz          = ([vl1, vl2], (55, 91), (1, 1), nil, nil)
-violinPizz                = ([vl1, vl2], (55, 91), (1, 1), nil, nil)
-violinPizzHarm            = ([vl1, vl2], (55, 91), (1, 1), nil, nil)
-violinColLegnoBat         = ([vl1, vl2], (55, 91), (1, 1), nil, nil)
-violinContinous           = ([vl1, vl2], (55, 91), (1, 1), nil, nil)
-violinContinousTrem       = ([vl1, vl2], (55, 91), (1, 1), nil, nil)
-violinContinousHarm       = ([vl1, vl2], (55, 91), (1, 1), nil, nil)
-violaBartokPizz           = ([vla],      (55, 91), (1, 1), nil, nil)
-violaPizz                 = ([vla],      (48, 84), (1, 1), nil, nil)
-violaPizzHarm             = ([vla],      (48, 84), (1, 1), nil, nil)
-violaColLegnoBat          = ([vla],      (48, 84), (1, 1), nil, nil)
-violaContinous            = ([vla],      (48, 84), (1, 1), nil, nil)
-violaContinousTrem        = ([vla],      (48, 84), (1, 1), nil, nil)
-violaContinousHarm        = ([vla],      (48, 84), (1, 1), nil, nil)
-celloBartokPizz           = ([vc],       (36, 72), (1, 1), nil, nil)
-celloPizz                 = ([vc],       (36, 72), (1, 1), nil, nil)
-celloPizzHarm             = ([vc],       (36, 72), (1, 1), nil, nil)
-celloColLegnoBat          = ([vc],       (36, 72), (1, 1), nil, nil)
-celloContinous            = ([vc],       (36, 72), (1, 1), nil, nil)
-celloContinousTrem        = ([vc],       (36, 72), (1, 1), nil, nil)
-celloContinousHarm        = ([vc],       (36, 72), (1, 1), nil, nil)
-bassBartokPizz            = ([db],       (28, 52), (1, 1), nil, nil)
-bassPizz                  = ([db],       (28, 52), (1, 1), nil, nil)
-bassPizzHarm              = ([db],       (28, 52), (1, 1), nil, nil)
-bassColLegnoBat           = ([db],       (28, 52), (1, 1), nil, nil)
-bassContinous             = ([db],       (28, 52), (1, 1), nil, nil)
-bassContinousTrem         = ([db],       (28, 52), (1, 1), nil, nil)
-bassContinousHarm         = ([db],       (28, 52), (1, 1), nil, nil)
-
-orchestrations   = [ flutePizz, fluteToungeRam, fluteShort, fluteContinuous, fluteContinuousFlz
-                   , oboeShort, oboeContinuous, clarinetShort, clarinetContinuous
-                   , clarinetContinuousFlz, bassClarinetShort, bassClarinetContinuous
-                   , bassClarinetContinuousFlz, bassoonShort, bassoonContinuous
-
-                   , hornShort, hornShortStopped, hornContinuous, hornContinuousStopped, trumpetShort
-                   , trumpetShortMute, trumpetContinuous, trumpetContinuousMute, trumpetContinuousHarmon
-                   , tromboneShort, tromboneShortMute, tromboneContinuous, tromboneContinuousMute, tromboneContinuousHarmon
-
-                   , pianoPizz, pianoShort, pianoResonant, crotalesShort, crotalesResonant
-                   , vibraphoneShort, vibraphoneResonant
-
-                   , bassDrumResonant, bassDrumRoll, snareDrumResonant, snareDrumRoll
-                   , largeCymbalResonant, largeCymbalRoll, woodblockShort
-
-                   , violinBartokPizz, violinPizz, violinPizzHarm, violinColLegnoBat
-                   , violinContinous, violinContinousTrem, violinContinousHarm, violaBartokPizz, violaPizz
-                   , violaPizzHarm, violaColLegnoBat, violaContinous, violaContinousTrem, violaContinousHarm
-                   , celloBartokPizz, celloPizz, celloPizzHarm, celloColLegnoBat, celloContinous, celloContinousTrem
-                   , celloContinousHarm, bassBartokPizz, bassPizz, bassPizzHarm, bassColLegnoBat, bassContinous
-                   , bassContinousTrem, bassContinousHarm ]
+; usage -> frame -> orchs -> (usage, music) 
+; orchestrateFrame orchs usage frame
 
 
 
@@ -838,6 +739,103 @@ orchestrations   = [ flutePizz, fluteToungeRam, fluteShort, fluteContinuous, flu
 
 
 
+; flutePizz                 = ([fl],       (60, 93),  (0, 12), (fn (x) 1), (fn ((pr, dr, sat)) 1))
+; fluteToungeRam            = ([fl],       (60, 71),  (0, 1),  nil, nil)
+; fluteShort                = ([fl],       (60, 93),  (0, 1),  nil, nil)
+; fluteContinuous           = ([fl],       (60, 93),  (0, 12), nil, nil)
+; fluteContinuousFlz        = ([fl],       (60, 93),  (0, 12), nil, nil)
+; oboeShort                 = ([ob],       (62, 88),  (0, 1),  nil, nil)
+; oboeContinuous            = ([ob],       (62, 88),  (0, 12), nil, nil)
+; clarinetShort             = ([cl],       (50, 86),  (0, 1),  nil, nil)
+; clarinetContinuous        = ([cl],       (50, 86),  (0, 12), nil, nil)
+; clarinetContinuousFlz     = ([cl],       (50, 86),  (0, 12), nil, nil)
+; bassClarinetShort         = ([cl],       (38, 72),  (0, 1),  nil, nil)
+; bassClarinetContinuous    = ([cl],       (38, 72),  (0, 12), nil, nil)
+; bassClarinetContinuousFlz = ([cl],       (38, 72),  (0, 1),  nil, nil)
+; bassoonShort              = ([bsn],      (34, 67),  (0, 1),  nil, nil)
+; bassoonContinuous         = ([bsn],      (34, 67),  (0, 12), nil, nil)
+; 
+; hornShort                 = ([hrn],      (48, 71),  (1, 1),  nil, nil)
+; hornShortStopped          = ([hrn],      (48, 71),  (1, 1),  nil, nil)
+; hornContinuous            = ([hrn],      (48, 71),  (1, 12), nil, nil)
+; hornContinuousStopped     = ([hrn],      (48, 71),  (1, 12), nil, nil)
+; trumpetShort              = ([tpt],      (53, 81),  (1, 1),  nil, nil)
+; trumpetShortMute          = ([tpt],      (53, 81),  (1, 1),  nil, nil)
+; trumpetContinuous         = ([tpt],      (53, 81),  (1, 1),  nil, nil)
+; trumpetContinuousMute     = ([tpt],      (53, 81),  (1, 1),  nil, nil)
+; trumpetContinuousHarmon   = ([tpt],      (53, 81),  (1, 1),  nil, nil)
+; tromboneShort             = ([tbn],      (40, 69),  (1, 1),  nil, nil)
+; tromboneShortMute         = ([tbn],      (40, 69),  (1, 1),  nil, nil)
+; tromboneContinuous        = ([tbn],      (40, 69),  (1, 1),  nil, nil)
+; tromboneContinuousMute    = ([tbn],      (40, 69),  (1, 1),  nil, nil)
+; tromboneContinuousHarmon  = ([tbn],      (40, 69),  (1, 1),  nil, nil)
+; 
+; pianoPizz                 = ([pno],      (21, 108), (1, 1),  nil, nil)
+; pianoShort                = ([pno],      (21, 108), (1, 1),  nil, nil)
+; pianoResonant             = ([pno],      (21, 108), (1, 1),  nil, nil)
+; crotalesShort             = ([crot],     (60, 72),  (1, 1),  nil, nil)
+; crotalesResonant          = ([crot],     (21, 108), (1, 8),  nil, nil)
+; vibraphoneShort           = ([vib],      (53, 89),  (1, 1),  nil, nil)
+; vibraphoneResonant        = ([vib],      (53, 89),  (1, 1),  nil, nil)
+; 
+; bassDrumResonant          = ([prc],      (),        (1, 1),  nil, nil)
+; bassDrumRoll              = ([prc],      (),        (1, 1),  nil, nil)
+; snareDrumResonant         = ([prc],      (),        (1, 1),  nil, nil)
+; snareDrumRoll             = ([prc],      (),        (1, 1),  nil, nil)
+; largeCymbalResonant       = ([prc],      (),        (1, 1),  nil, nil)
+; largeCymbalRoll           = ([prc],      (),        (1, 1),  nil, nil)
+; woodblockShort            = ([prc],      (),        (1, 1),  nil, nil)
+; 
+; violinBartokPizz          = ([vl1, vl2], (55, 91), (1, 1), nil, nil)
+; violinPizz                = ([vl1, vl2], (55, 91), (1, 1), nil, nil)
+; violinPizzHarm            = ([vl1, vl2], (55, 91), (1, 1), nil, nil)
+; violinColLegnoBat         = ([vl1, vl2], (55, 91), (1, 1), nil, nil)
+; violinContinous           = ([vl1, vl2], (55, 91), (1, 1), nil, nil)
+; violinContinousTrem       = ([vl1, vl2], (55, 91), (1, 1), nil, nil)
+; violinContinousHarm       = ([vl1, vl2], (55, 91), (1, 1), nil, nil)
+; violaBartokPizz           = ([vla],      (55, 91), (1, 1), nil, nil)
+; violaPizz                 = ([vla],      (48, 84), (1, 1), nil, nil)
+; violaPizzHarm             = ([vla],      (48, 84), (1, 1), nil, nil)
+; violaColLegnoBat          = ([vla],      (48, 84), (1, 1), nil, nil)
+; violaContinous            = ([vla],      (48, 84), (1, 1), nil, nil)
+; violaContinousTrem        = ([vla],      (48, 84), (1, 1), nil, nil)
+; violaContinousHarm        = ([vla],      (48, 84), (1, 1), nil, nil)
+; celloBartokPizz           = ([vc],       (36, 72), (1, 1), nil, nil)
+; celloPizz                 = ([vc],       (36, 72), (1, 1), nil, nil)
+; celloPizzHarm             = ([vc],       (36, 72), (1, 1), nil, nil)
+; celloColLegnoBat          = ([vc],       (36, 72), (1, 1), nil, nil)
+; celloContinous            = ([vc],       (36, 72), (1, 1), nil, nil)
+; celloContinousTrem        = ([vc],       (36, 72), (1, 1), nil, nil)
+; celloContinousHarm        = ([vc],       (36, 72), (1, 1), nil, nil)
+; bassBartokPizz            = ([db],       (28, 52), (1, 1), nil, nil)
+; bassPizz                  = ([db],       (28, 52), (1, 1), nil, nil)
+; bassPizzHarm              = ([db],       (28, 52), (1, 1), nil, nil)
+; bassColLegnoBat           = ([db],       (28, 52), (1, 1), nil, nil)
+; bassContinous             = ([db],       (28, 52), (1, 1), nil, nil)
+; bassContinousTrem         = ([db],       (28, 52), (1, 1), nil, nil)
+; bassContinousHarm         = ([db],       (28, 52), (1, 1), nil, nil)
+; 
+; orchestrations   = [ flutePizz, fluteToungeRam, fluteShort, fluteContinuous, fluteContinuousFlz
+;                    , oboeShort, oboeContinuous, clarinetShort, clarinetContinuous
+;                    , clarinetContinuousFlz, bassClarinetShort, bassClarinetContinuous
+;                    , bassClarinetContinuousFlz, bassoonShort, bassoonContinuous
+; 
+;                    , hornShort, hornShortStopped, hornContinuous, hornContinuousStopped, trumpetShort
+;                    , trumpetShortMute, trumpetContinuous, trumpetContinuousMute, trumpetContinuousHarmon
+;                    , tromboneShort, tromboneShortMute, tromboneContinuous, tromboneContinuousMute, tromboneContinuousHarmon
+; 
+;                    , pianoPizz, pianoShort, pianoResonant, crotalesShort, crotalesResonant
+;                    , vibraphoneShort, vibraphoneResonant
+; 
+;                    , bassDrumResonant, bassDrumRoll, snareDrumResonant, snareDrumRoll
+;                    , largeCymbalResonant, largeCymbalRoll, woodblockShort
+; 
+;                    , violinBartokPizz, violinPizz, violinPizzHarm, violinColLegnoBat
+;                    , violinContinous, violinContinousTrem, violinContinousHarm, violaBartokPizz, violaPizz
+;                    , violaPizzHarm, violaColLegnoBat, violaContinous, violaContinousTrem, violaContinousHarm
+;                    , celloBartokPizz, celloPizz, celloPizzHarm, celloColLegnoBat, celloContinous, celloContinousTrem
+;                    , celloContinousHarm, bassBartokPizz, bassPizz, bassPizzHarm, bassColLegnoBat, bassContinous
+;                    , bassContinousTrem, bassContinousHarm ] 
 
 
 
@@ -866,9 +864,15 @@ orchestrations   = [ flutePizz, fluteToungeRam, fluteShort, fluteContinuous, flu
 
 
 
-events _ = melody (loop 1) (take 70 (loop 60))
 
 
+
+
+
+
+
+
+events _ = melody (loop 1) (take 700 (loop 60))
 
 
 
