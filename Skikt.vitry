@@ -472,9 +472,6 @@ major root  = [root, root + 4, root + 7]
 ; Ranges
 
 range a = (a, a)
-
-; a -> range a -> bool
-isInRange (a, b) x = a <= x && x <= b
     
 ; range -> range | ()
 overlap (a, b) (c, d) =
@@ -482,6 +479,10 @@ overlap (a, b) (c, d) =
         let x = max a c
             y = min b d
             if  (x > y) () else (x, y)
+
+; a -> range a -> bool
+isInRange (a, b) x = a <= x && x <= b
+isOverlapping = (!= ()) .' overlap
 
 ; range prec -> prec
 randomRange (rangeLow, rangeHigh) = random (succ rangeHigh - rangeLow) + rangeLow
@@ -603,7 +604,12 @@ resonance  = double
 frame = (dur, range pitch, range dur, dynamic, saturation, resonance)
 layer = [frame]
 
-getFrameDur (d, _, _, _, _, _) = d
+getFrameDur        (d, _,  _,  _, _, _) = d
+getFramePitchRange (_, pr, _,  _, _, _) = pr
+getFrameDurRange   (_, _,  dr, _, _, _) = dr
+getFrameDynamic    (_, _,  _,  n, _, _) = n
+getFrameSaturation (_, _,  _,  _, s, _) = s
+getFrameResonance  (_, _,  _,  _, _, e) = e
 
 
 ; An orchestration is a list of parts, along with two functions
@@ -757,7 +763,7 @@ curve9 = (sigToPos . take 70 . sinG . addG (map (* 0.1) ((sinG . sinG) (line 60)
 short = take 70
     zip6 
         loop 5
-        loop (60, 70)
+        loop (65, 67)
         loop (1/2, 1/2)
         
         curve1
@@ -767,7 +773,7 @@ short = take 70
 resonant = take 70
     zip6 
         loop 5
-        loop (60, 70)
+        loop (55, 57)
         loop (1/2, 1/2)
         
         curve1
@@ -777,7 +783,7 @@ resonant = take 70
 long = take 70
     zip6 
         loop 5
-        loop (60, 70)
+        loop (55, 57)
         loop (5, 5) 
         
         curve1
@@ -789,52 +795,75 @@ layers = [short, resonant, long]
 
 
 
+durRange   r = isOverlapping r . getFrameDurRange
+pitchRange r = isOverlapping r . getFramePitchRange
+
+stdWeight   f (_, _,  _,  n, s, e) = (f n s e) / 3.0
+stdOrch   r f (d, pr, dr, n, s, e) = 
+    map (f . setVoice [1, 2] . setPart r . setDyn n) (melody [randomRange dr] [randomRange pr])
 
 
-trivialOrchestration r (d, pr, dr, n, s, e) = 
-    map (setVoice [1, 2] . setPart r . setDyn n) (melody [randomRange dr] [randomRange pr])
+flutePizz                 = ( [fl]
+                            , allPred [pitchRange (60, 93), durRange (0, 1 )]
+                            , stdWeight (fn (dyn sat res) dyn + sat + res )
+                            , stdOrch fl (setMarks ["pizz"]) )
+fluteToungeRam            = ( [fl]
+                            , allPred [pitchRange (60, 71), durRange (0, 1 )]
+                            , (const 1.0)
+                            , stdOrch fl (setMarks [("x", "t-r.")]) )
+fluteShort                = ( [fl]
+                            , allPred [pitchRange (60, 93), durRange (0, 1 )]
+                            , (const 1.0)
+                            , stdOrch fl (setMarks ["."]) )
+fluteContinuous           = ( [fl]
+                            , allPred [pitchRange (60, 93), durRange (0, 12)]
+                            , (const 1.0)
+                            , stdOrch fl id )    
+fluteContinuousFlz        = ( [fl]
+                            , allPred [pitchRange (60, 93), durRange (0, 12)]
+                            , (const 1.0)
+                            , stdOrch fl (setMarks ["trem", ("x", "flz")]) )
+oboeShort                 = ( [ob]
+                            , allPred [pitchRange (62, 88), durRange (0, 1 )]
+                            , (const 1.0)
+                            , stdOrch ob id )
+oboeContinuous            = ( [ob]
+                            , allPred [pitchRange (62, 88), durRange (0, 12)]
+                            , (const 1.0)
+                            , stdOrch ob id )
+clarinetShort             = ( [cl]
+                            , allPred [pitchRange (50, 86), durRange (0, 1 )]
+                            , (const 1.0)
+                            , stdOrch cl id )
+clarinetContinuous        = ( [cl]
+                            , allPred [pitchRange (50, 86), durRange (0, 12)]
+                            , (const 1.0)
+                            , stdOrch cl id )
+clarinetContinuousFlz     = ( [cl]
+                            , allPred [pitchRange (50, 86), durRange (0, 12)]
+                            , (const 1.0)
+                            , stdOrch cl id )
+bassClarinetShort         = ( [cl]
+                            , allPred [pitchRange (38, 72), durRange (0, 1 )]
+                            , (const 1.0)
+                            , stdOrch cl id )
+bassClarinetContinuous    = ( [cl]
+                            , allPred [pitchRange (38, 72), durRange (0, 12)]
+                            , (const 1.0)
+                            , stdOrch cl id )
+bassClarinetContinuousFlz = ( [cl]
+                            , allPred [pitchRange (38, 72), durRange (0, 12)]
+                            , (const 1.0)
+                            , stdOrch cl id )
+bassoonShort              = ( [bsn]
+                            , allPred [pitchRange (34, 67), durRange (0, 1 )]
+                            , (const 1.0)
+                            , stdOrch bsn id ) 
+bassoonContinuous         = ( [bsn]
+                            , allPred [pitchRange (34, 67), durRange (0, 12)]
+                            , (const 1.0)
+                            , stdOrch bsn id )
 
-orchestrations : [orchestration] = 
-    [ ([fl],  (const true), (const 0.5), (trivialOrchestration fl)) 
-    , ([ob],  (const true), (const 0.5), (trivialOrchestration ob))
-    , ([cl],  (const true), (const 0.5), (trivialOrchestration cl))
-    , ([bsn], (const true), (const 0.5), (trivialOrchestration bsn))
-    , ([hrn], (const true), (const 0.5), (trivialOrchestration hrn))
-    , ([tpt], (const true), (const 0.5), (trivialOrchestration tpt))
-    , ([tbn], (const true), (const 0.5), (trivialOrchestration tbn))
-    , ([pno], (const true), (const 0.5), (trivialOrchestration pno))
-    , ([vl1], (const true), (const 0.5), (trivialOrchestration vl1))
-    , ([vl2], (const true), (const 0.5), (trivialOrchestration vl2))
-    , ([vla], (const true), (const 0.5), (trivialOrchestration vla))
-    , ([vc],  (const true), (const 0.5), (trivialOrchestration vc))
-    , ([db],  (const true), (const 0.5), (trivialOrchestration db)) ]
-
-
-
-
-
-
-
-
-
-
-
-; flutePizz                 = ([fl],       (60, 93),  (0, 12), (fn (x) 1), (fn ((pr, dr, sat)) 1))
-; fluteToungeRam            = ([fl],       (60, 71),  (0, 1),  nil, nil)
-; fluteShort                = ([fl],       (60, 93),  (0, 1),  nil, nil)
-; fluteContinuous           = ([fl],       (60, 93),  (0, 12), nil, nil)
-; fluteContinuousFlz        = ([fl],       (60, 93),  (0, 12), nil, nil)
-; oboeShort                 = ([ob],       (62, 88),  (0, 1),  nil, nil)
-; oboeContinuous            = ([ob],       (62, 88),  (0, 12), nil, nil)
-; clarinetShort             = ([cl],       (50, 86),  (0, 1),  nil, nil)
-; clarinetContinuous        = ([cl],       (50, 86),  (0, 12), nil, nil)
-; clarinetContinuousFlz     = ([cl],       (50, 86),  (0, 12), nil, nil)
-; bassClarinetShort         = ([cl],       (38, 72),  (0, 1),  nil, nil)
-; bassClarinetContinuous    = ([cl],       (38, 72),  (0, 12), nil, nil)
-; bassClarinetContinuousFlz = ([cl],       (38, 72),  (0, 1),  nil, nil)
-; bassoonShort              = ([bsn],      (34, 67),  (0, 1),  nil, nil)
-; bassoonContinuous         = ([bsn],      (34, 67),  (0, 12), nil, nil)
-; 
 ; hornShort                 = ([hrn],      (48, 71),  (1, 1),  nil, nil)
 ; hornShortStopped          = ([hrn],      (48, 71),  (1, 1),  nil, nil)
 ; hornContinuous            = ([hrn],      (48, 71),  (1, 12), nil, nil)
@@ -895,10 +924,10 @@ orchestrations : [orchestration] =
 ; bassContinousTrem         = ([db],       (28, 52), (1, 1), nil, nil)
 ; bassContinousHarm         = ([db],       (28, 52), (1, 1), nil, nil)
 ; 
-; orchestrations   = [ flutePizz, fluteToungeRam, fluteShort, fluteContinuous, fluteContinuousFlz
-;                    , oboeShort, oboeContinuous, clarinetShort, clarinetContinuous
-;                    , clarinetContinuousFlz, bassClarinetShort, bassClarinetContinuous
-;                    , bassClarinetContinuousFlz, bassoonShort, bassoonContinuous
+orchestrations   = [ flutePizz, fluteToungeRam, fluteShort, fluteContinuous, fluteContinuousFlz
+                   , oboeShort, oboeContinuous, clarinetShort, clarinetContinuous
+                   , clarinetContinuousFlz, bassClarinetShort, bassClarinetContinuous
+                   , bassClarinetContinuousFlz, bassoonShort, bassoonContinuous ]
 ; 
 ;                    , hornShort, hornShortStopped, hornContinuous, hornContinuousStopped, trumpetShort
 ;                    , trumpetShortMute, trumpetContinuous, trumpetContinuousMute, trumpetContinuousHarmon
@@ -922,7 +951,7 @@ orchestrations : [orchestration] =
 
 ; events _ = melody (loop 1) (take 700 (loop 60))
 events _ = 
-    do  print "resolving events..."
+    do  print "resolving orchestration..."
         (x, xs) = orchestrate layers orchestrations
         prepend (withMarks (++ initMarks) x) xs
 
