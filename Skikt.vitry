@@ -592,25 +592,7 @@ export text = do
 
 
 ; =============================================================================
-; Layer and orchestration engine
-
-; A layer is a sequence of frames, each of which has a duration
-; and some attributes
-
-dynamic    = double
-saturation = double
-resonance  = double
-
-frame = (dur, range pitch, range dur, dynamic, saturation, resonance)
-layer = [frame]
-
-getFrameDur        (d, _,  _,  _, _, _) = d
-getFramePitchRange (_, pr, _,  _, _, _) = pr
-getFrameDurRange   (_, _,  dr, _, _, _) = dr
-getFrameDynamic    (_, _,  _,  n, _, _) = n
-getFrameSaturation (_, _,  _,  _, s, _) = s
-getFrameResonance  (_, _,  _,  _, _, e) = e
-
+; Orchestration engine
 
 ; An orchestration is a list of parts, along with two functions
 ; to indicate its appropriateness for some frame, and a function
@@ -672,8 +654,7 @@ orchestrate_ lastOffset : int offsets : [time] usage : [usage] layers : [layer] 
 ; [usage] -> frame -> [orchestration] -> ([usage], music)
 
 orchestrateFrame usage : [usage] frame : frame orchs : [orchestration] =
-    let filterIllegal = id
-                      . filter (somePartBusy usage)
+    let filterIllegal = filter (somePartBusy usage)
                       . retain (acceptsFrame frame)
 
         orchs         = filterIllegal orchs
@@ -694,18 +675,16 @@ orchestrateFrame usage : [usage] frame : frame orchs : [orchestration] =
                          usage = prepend (dur, parts) usage
                          (usage, music)
                                
-; TODO getUsagePart et al
 updateOffsets t i d xs   = update i (index i xs + d) xs
-updateUsage   t          = filter (fn (x) fst x <= 0) . map (fn (x) (fst x - t, snd x))
+updateUsage   t          = filter (fn (x) getUsageDur x <= 0) . map (fn (x) (getUsageDur x - t, getUsagePart x))
 updateLayers  i fs       = update i fs
 
 acceptsFrame frame       = (flip apply) frame . getPredicate
 weightFrame frame        = (flip apply) frame . getWeighter
-somePartBusy usage       = any (elementOf (flatten (map getUsagePart usage))) . getParts
+somePartBusy usage       = any (elementOf (concat (map getUsagePart usage))) . getParts
 warnNoOrchs _            = do  print "warning: no orchestration"
 printOrchs orchs weights = do  print ("  orchs  : " ++ string (map (map getName) (map getParts orchs)))
                                print ("  weights: " ++ string weights)
-flatten = foldr (++) []
 
 
 ; =============================================================================
@@ -756,7 +735,22 @@ curve9 = (sigToPos . take 70 . sinG . addG (map (* 0.1) ((sinG . sinG) (line 60)
 
 
 
-; frame = (dur, range pitch, range dur, dynamic, saturation, resonance)
+
+
+
+dynamic    = double
+saturation = double
+resonance  = double
+
+frame = (dur, range pitch, range dur, dynamic, saturation, resonance)
+layer = [frame]
+
+getFrameDur        (d, _,  _,  _, _, _) = d
+getFramePitchRange (_, pr, _,  _, _, _) = pr
+getFrameDurRange   (_, _,  dr, _, _, _) = dr
+getFrameDynamic    (_, _,  _,  n, _, _) = n
+getFrameSaturation (_, _,  _,  _, s, _) = s
+getFrameResonance  (_, _,  _,  _, _, e) = e
 
 short = take 60
     zip6
@@ -954,7 +948,7 @@ orchestrations   = [ flutePizz, fluteToungeRam, fluteShort, fluteContinuous, flu
 
 
 events _ =
-    do  print "resolving orchestration..."
+    do  print "resolving orchestrations..."
         (x, xs) = orchestrate layers orchestrations
         if preview
             prepend (withMarks (++ header) x) xs
