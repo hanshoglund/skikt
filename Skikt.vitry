@@ -670,8 +670,8 @@ updateLayers  i fs  = update i fs
 
 ; [usage] -> frame -> [orchestration] -> ([usage], music) 
 orchestrateFrame usage : [usage] frame : frame orchs : [orchestration] =
-  ; do  print ("--usage: " ++ string usage)
-  ;     print ("--frame: " ++ string frame)
+  ; do  print ("  usage: " ++ string usage)
+  ;     print ("  frame: " ++ string frame)
                 
     do  orchs   = retain ((flip apply) frame . getPredicate) orchs        
         orchs   = map (withParts (filter ((flip elem) (map snd usage)))) orchs
@@ -680,8 +680,14 @@ orchestrateFrame usage : [usage] frame : frame orchs : [orchestration] =
         ; print ("--orchs: " ++ string (map (map getName) (map getParts orchs))) 
         
         match orchs
-            _ : () = error "No orchestrations available"
-            _      = let weights = map  ((flip apply) frame . getWeighter) orchs
+            ; _ : () = error "No orchestrations available"
+            _ : () = do  print "Warning: No orchestration"
+                         (usage, [])
+            _      = do  weights = map  ((flip apply) frame . getWeighter) orchs
+
+                         print ("  orchs  : " ++ string (map (map getName) (map getParts orchs))) 
+                         print ("  weights: " ++ string weights) 
+
                          orch    = index (maximumIndex weights) orchs                
                          music = (getOrchestrator orch) frame
             
@@ -766,29 +772,31 @@ short = take 70
         loop (65, 67)
         loop (1/2, 1/2)
         
-        curve1
-        loop 0.1
-        loop 0.1
-
-resonant = take 70
-    zip6 
-        loop 5
-        loop (55, 57)
-        loop (1/2, 1/2)
-        
-        curve1
-        loop 0.1
+        line 70
+        line 70
         loop 0.1
 
-long = take 70
-    zip6 
-        loop 5
-        loop (55, 57)
-        loop (5, 5) 
+resonant = []
+; resonant = take 70
+;     zip6 
+;         loop 5
+;         loop (55, 57)
+;         loop (1/2, 1/2)
+;         
+;         curve1
+;         loop 0.1
+;         loop 0.1 
+
+long = take 10
+    let durs = map ((* 3) . (+ 1)) (rands 5)
+        zip6 
+            durs
+            zip (loop 60) (map ((+ 62) . (* 2) . rationalize) curve1)
+            zip durs durs
         
-        curve1
-        loop 0.1
-        loop 0.1
+            curve1
+            curve1
+            loop 0.0
 
 layers = [short, resonant, long]
 
@@ -798,71 +806,72 @@ layers = [short, resonant, long]
 durRange   r = isOverlapping r . getFrameDurRange
 pitchRange r = isOverlapping r . getFramePitchRange
 
-stdWeight   f (_, _,  _,  n, s, e) = (f n s e) / 3.0
-stdOrch   r f (d, pr, dr, n, s, e) = 
-    map (f . setVoice [1, 2] . setPart r . setDyn n) (melody [randomRange dr] [randomRange pr])
+stdWeight   f (_, _,  _,  n, s, e) = (f n s e)
+stdOrch   r ir f (d, pr, dr, n, s, e) =                        
+    let range = (overlap ir dr)
+        pitch = if (range == ()) (randomRange ir) else (randomRange range)
+        map (f . setVoice [1, 2] . setPart r . setDyn n) (melody [randomRange dr] [pitch])
 
 
-flutePizz                 = ( [fl]
-                            , allPred [pitchRange (60, 93), durRange (0, 1 )]
-                            , stdWeight (fn (dyn sat res) dyn + sat + res )
-                            , stdOrch fl (setMarks ["pizz"]) )
-fluteToungeRam            = ( [fl]
-                            , allPred [pitchRange (60, 71), durRange (0, 1 )]
-                            , (const 1.0)
-                            , stdOrch fl (setMarks [("x", "t-r.")]) )
-fluteShort                = ( [fl]
-                            , allPred [pitchRange (60, 93), durRange (0, 1 )]
-                            , (const 1.0)
-                            , stdOrch fl (setMarks ["."]) )
-fluteContinuous           = ( [fl]
-                            , allPred [pitchRange (60, 93), durRange (0, 12)]
-                            , (const 1.0)
-                            , stdOrch fl id )    
-fluteContinuousFlz        = ( [fl]
-                            , allPred [pitchRange (60, 93), durRange (0, 12)]
-                            , (const 1.0)
-                            , stdOrch fl (setMarks ["trem", ("x", "flz")]) )
-oboeShort                 = ( [ob]
-                            , allPred [pitchRange (62, 88), durRange (0, 1 )]
-                            , (const 1.0)
-                            , stdOrch ob id )
-oboeContinuous            = ( [ob]
-                            , allPred [pitchRange (62, 88), durRange (0, 12)]
-                            , (const 1.0)
-                            , stdOrch ob id )
-clarinetShort             = ( [cl]
-                            , allPred [pitchRange (50, 86), durRange (0, 1 )]
-                            , (const 1.0)
-                            , stdOrch cl id )
-clarinetContinuous        = ( [cl]
-                            , allPred [pitchRange (50, 86), durRange (0, 12)]
-                            , (const 1.0)
-                            , stdOrch cl id )
-clarinetContinuousFlz     = ( [cl]
-                            , allPred [pitchRange (50, 86), durRange (0, 12)]
-                            , (const 1.0)
-                            , stdOrch cl id )
-bassClarinetShort         = ( [cl]
-                            , allPred [pitchRange (38, 72), durRange (0, 1 )]
-                            , (const 1.0)
-                            , stdOrch cl id )
-bassClarinetContinuous    = ( [cl]
-                            , allPred [pitchRange (38, 72), durRange (0, 12)]
-                            , (const 1.0)
-                            , stdOrch cl id )
-bassClarinetContinuousFlz = ( [cl]
-                            , allPred [pitchRange (38, 72), durRange (0, 12)]
-                            , (const 1.0)
-                            , stdOrch cl id )
-bassoonShort              = ( [bsn]
-                            , allPred [pitchRange (34, 67), durRange (0, 1 )]
-                            , (const 1.0)
-                            , stdOrch bsn id ) 
-bassoonContinuous         = ( [bsn]
-                            , allPred [pitchRange (34, 67), durRange (0, 12)]
-                            , (const 1.0)
-                            , stdOrch bsn id )
+flutePizz                 = ( [fl], allPred [pitchRange (60, 93), durRange (0, 1 )]
+                            , stdWeight (fn (dyn sat res)  sat )
+                            , stdOrch fl (60, 93) (setMarks ["pizz"]) )
+
+fluteToungeRam            = ( [fl], allPred [pitchRange (60, 71), durRange (0, 1 )]
+                            , stdWeight (fn (dyn sat res)  sat )
+                            , stdOrch fl (60, 71) (setMarks [("x", "t-r.")]) )
+
+fluteShort                = ( [fl], allPred [pitchRange (60, 93), durRange (0, 1 )]
+                            , (const 0.5)
+                            , stdOrch fl (60, 93) (setMarks ["."]) )
+
+fluteContinuous           = ( [fl], allPred [pitchRange (60, 93), durRange (0, 12)]
+                            , (const 0.5)
+                            , stdOrch fl (60, 93) id )    
+
+fluteContinuousFlz        = ( [fl], allPred [pitchRange (60, 93), durRange (0, 12)]
+                            , stdWeight (fn (dyn sat res)  sat )
+                            , stdOrch fl (60, 93) (setMarks ["trem", ("x", "flz")]) )
+
+oboeShort                 = ( [ob], allPred [pitchRange (62, 88), durRange (0, 1 )]
+                            , (const 0.5)
+                            , stdOrch ob (62, 88) (setMarks ["."]) )
+
+oboeContinuous            = ( [ob], allPred [pitchRange (62, 88), durRange (0, 12)]
+                            , (const 0.5)
+                            , stdOrch ob (62, 88) id )
+
+clarinetShort             = ( [cl], allPred [pitchRange (50, 86), durRange (0, 1 )]
+                            , (const 0.5)
+                            , stdOrch cl (50, 86) (setMarks ["."]) )
+
+clarinetContinuous        = ( [cl], allPred [pitchRange (50, 86), durRange (0, 12)]
+                            , (const 0.5)
+                            , stdOrch cl (50, 86) id )
+
+clarinetContinuousFlz     = ( [cl], allPred [pitchRange (50, 86), durRange (0, 12)]
+                            , stdWeight (fn (dyn sat res)  sat )
+                            , stdOrch cl (50, 86) (setMarks ["trem", ("x", "flz")]) )
+
+; bassClarinetShort         = ( [cl], allPred [pitchRange (38, 72), durRange (0, 1 )]
+;                             , (const 0.5)
+;                             , stdOrch cl (38, 72) (setMarks ["."]) )
+; 
+; bassClarinetContinuous    = ( [cl], allPred [pitchRange (38, 72), durRange (0, 12)]
+;                             , (const 0.5)
+;                             , stdOrch cl (38, 72) id )
+; 
+; bassClarinetContinuousFlz = ( [cl], allPred [pitchRange (38, 72), durRange (0, 12)]
+;                             , stdWeight (fn (dyn sat res)  0.1 * dyn + 0.2 * sat + 0.0 * res )
+;                             , stdOrch cl (38, 72) (setMarks ["trem", ("x", "flz")]) )
+
+bassoonShort              = ( [bsn], allPred [pitchRange (34, 67), durRange (0, 1 )]
+                            , (const 0.5)
+                            , stdOrch bsn (34, 67) (setMarks ["."]) ) 
+
+bassoonContinuous         = ( [bsn], allPred [pitchRange (34, 67), durRange (0, 12)]
+                            , (const 0.5)
+                            , stdOrch bsn (34, 67) id )
 
 ; hornShort                 = ([hrn],      (48, 71),  (1, 1),  nil, nil)
 ; hornShortStopped          = ([hrn],      (48, 71),  (1, 1),  nil, nil)
@@ -925,9 +934,9 @@ bassoonContinuous         = ( [bsn]
 ; bassContinousHarm         = ([db],       (28, 52), (1, 1), nil, nil)
 ; 
 orchestrations   = [ flutePizz, fluteToungeRam, fluteShort, fluteContinuous, fluteContinuousFlz
-                   , oboeShort, oboeContinuous, clarinetShort, clarinetContinuous
-                   , clarinetContinuousFlz, bassClarinetShort, bassClarinetContinuous
-                   , bassClarinetContinuousFlz, bassoonShort, bassoonContinuous ]
+                   , oboeShort, oboeContinuous, clarinetShort, clarinetContinuous, clarinetContinuousFlz
+                   ; , bassClarinetShort, bassClarinetContinuous, bassClarinetContinuousFlz
+                   , bassoonShort, bassoonContinuous ]
 ; 
 ;                    , hornShort, hornShortStopped, hornContinuous, hornContinuousStopped, trumpetShort
 ;                    , trumpetShortMute, trumpetContinuous, trumpetContinuousMute, trumpetContinuousHarmon
