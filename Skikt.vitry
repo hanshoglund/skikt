@@ -678,8 +678,13 @@ layer = [frame]
 ; getFrameDur (d, _, _, _, _, _) = d
 getFrameDur (d, _) = d
 
-layers : [layer] = [ take 30 (zip (map (+ 3) (rands 3)) (cycle (60 .. 70)))
-                   , take 30 (zip (map (+ 1) (rands 3)) (cycle (70 .. 80))) ]
+layers : [layer] = [ take 40 (zip (map (+ 1) (rands 6)) (cycle (50 .. 52)))
+                   , take 40 (zip (map (+ 1) (rands 6)) (cycle (60 .. 62)))
+                   , take 40 (zip (map (+ 1) (rands 6)) (cycle (60 .. 62)))
+                   , take 40 (zip (map (+ 1) (rands 6)) (cycle (60 .. 62)))
+                   , take 40 (zip (map (+ 1) (rands 6)) (cycle (60 .. 62)))
+                   , take 40 (zip (map (+ 1) (rands 6)) (cycle (60 .. 62)))
+                   , take 30 (zip (map (+ 1) (rands 6)) (cycle (70 .. 72))) ]
 
 
 
@@ -722,20 +727,20 @@ orchestrate layers : [layer] orchs : [orchestration] =
 ; [time] -> [usage] -> [layer] -> [orchestration] -> music
 orchestrate_ lastOffset : int offsets : [time] usage : [usage] layers : [layer] orchs : [orchestration] = 
 
- ; do print lastOffset
- ;    print offsets  
-    ; print (map fst usage)
+ do print ("----------")
+    ; print ("offsets " ++ string offsets)  
+    ; print ("usage   " ++ string (map fst usage))
 
   match offsets
     _ : () = ()
     _      = do  t = minimum offsets        
                  i = findIndex (== t) offsets
                  match (index i layers)
-                     _ : ()  = let offsets = remove i offsets 
+                     _ : ()  = do  offsets = remove i offsets 
                                    usage   = remove i usage
                                    layers  = remove i layers
                                    orchestrate_ t offsets usage layers orchs
-                     (f, fs) = let offsets = updateOffsets t i (getFrameDur f) offsets
+                     (f, fs) = do  offsets = updateOffsets t i (getFrameDur f) offsets
                                    usage   = updateUsage   (t - lastOffset) usage        
                                    layers  = updateLayers  i fs layers
                                    let (usage, music) = orchestrateFrame usage f orchs
@@ -751,22 +756,26 @@ updateLayers  i fs  = update i fs
 
 ; [usage] -> frame -> [orchestration] -> ([usage], music) 
 orchestrateFrame usage : [usage] frame : frame orchs : [orchestration] =
-    do  orchs   = retain ((flip apply) frame . getPredicate) orchs
+    do  print ("--usage: " ++ string usage)
+        print ("--frame: " ++ string frame)
         
+        
+        orchs   = retain ((flip apply) frame . getPredicate) orchs        
         orchs   = map (withParts (filter ((flip elem) (map snd usage)))) orchs
         orchs   = filter ((== []) . getParts) orchs
-        ; print ("usage: " ++ string usage)
-        ; print (map getParts orchs)
         
-        weights = map    ((flip apply) frame . getWeighter) orchs
-        orch    = index (maximumIndex weights) orchs
-                
-        music = (getOrchestrator orch) frame
+        print ("--orchs: " ++ string (map (map getName) (map getParts orchs))) 
+        
+        match orchs
+            _ : () = error "No orchestrations available"
+            _      = let weights = map  ((flip apply) frame . getWeighter) orchs
+                         orch    = index (maximumIndex weights) orchs                
+                         music = (getOrchestrator orch) frame
             
-        ; FIXME relies on orchestrators to set part for first event
-        part  = getPart (head music)
-        usage = prepend (getFrameDur frame, part) usage
-        (usage, music)
+                         ; FIXME relies on orchestrators to set part for first event
+                         part  = getPart (head music)
+                         usage = prepend (getFrameDur frame, part) usage
+                         (usage, music)
 
 
 
@@ -774,14 +783,25 @@ orchestrateFrame usage : [usage] frame : frame orchs : [orchestration] =
 
 
 
-tracingOrchestration r (d, p) = map (setVoice [1, 2] . setPart r) (melody [d] [p])
+trivialOrchestration r (d, p) = map (setVoice [1, 2] . setPart r) (melody [d] [p])
 
-flute = ([fl], (const true), (const 0.5), (tracingOrchestration fl)) 
-oboe  = ([ob], (const true), (const 0.5), (tracingOrchestration ob))
+orchestrations : [orchestration] = 
+    [ ([fl],  (const true), (const 0.5), (trivialOrchestration fl)) 
+    , ([ob],  (const true), (const 0.5), (trivialOrchestration ob))
+    , ([cl],  (const true), (const 0.5), (trivialOrchestration cl))
+    , ([bsn], (const true), (const 0.5), (trivialOrchestration bsn))
+    , ([hrn], (const true), (const 0.5), (trivialOrchestration hrn))
+    , ([tpt], (const true), (const 0.5), (trivialOrchestration tpt))
+    , ([tbn], (const true), (const 0.5), (trivialOrchestration tbn))
+    , ([pno], (const true), (const 0.5), (trivialOrchestration pno))
+    , ([vl1], (const true), (const 0.5), (trivialOrchestration vl1))
+    , ([vl2], (const true), (const 0.5), (trivialOrchestration vl2))
+    , ([vla], (const true), (const 0.5), (trivialOrchestration vla))
+    , ([vc],  (const true), (const 0.5), (trivialOrchestration vc))
+    , ([db],  (const true), (const 0.5), (trivialOrchestration db)) ]
 
 
 
-orchestrations : [orchestration] = [flute, oboe]
 
 
 
