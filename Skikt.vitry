@@ -13,7 +13,7 @@ fileDir     = "/Users/hans/Documents/Musik/Skikt/output/"
 fileName    = "out"
 preview     = false
 fixClefs    = false
-verbose     = `orchestration & `output
+verbose     = `output
 
 ; =============================================================================
 ; FOMUS
@@ -626,17 +626,22 @@ getFrameResonance  (_, _,  _,  _, _, e) = e
 ; predicate    : frame -> boolean
 ; weighter     : frame -> double
 ; orchestrator : state -> frame -> (state, music)
-predicate     = _
-weighter      = _
-orchestrator  = _
-orchestration = ([part], predicate, weighter, orchestrator)
-usage         = (dur, part)
+predicate      = _
+weighter       = _
+orchestrator   = _
+orchOptionType = `padding
+orchOption     = (orchOptionType, (str | num | [str] | [num]))
+orchestration  = ([part], predicate, weighter, orchestrator, [orchOption])
+usage          = (dur, part)
+getUsageDur    = fst
+getUsagePart   = snd
 
-getParts          (r, p, w, o) = r
-getPredicate      (r, p, w, o) = p
-getWeighter       (r, p, w, o) = w
-getOrchestrator   (r, p, w, o) = o
-setParts        r (_, p, w, o) = (r, p, w, o)
+getParts          (r, p, w, o, t) = r
+getPredicate      (r, p, w, o, t) = p
+getWeighter       (r, p, w, o, t) = w
+getOrchestrator   (r, p, w, o, t) = o
+getOptions        (r, p, w, o, t) = t
+setParts        r (_, p, w, o, t) = (r, p, w, o, t)
 withParts f x = setParts (f (getParts x)) x
 
 
@@ -649,8 +654,9 @@ orchestrate layers : [layer] orchs : [orchestration] =
 orchestrate_ lastOffset : int offsets : [time] usage : [usage] layers : [layer] orchs : [orchestration] = 
     match offsets
         _ : [] = []
+        
         _      = do  t = minimum offsets        
-                     i = findIndex (== t) offsets
+                     i = findIndex (== t) offsets             
                      match (index i layers)
                          _ : []  = do  offsets = remove i offsets 
                                        usage   = remove i usage
@@ -659,73 +665,77 @@ orchestrate_ lastOffset : int offsets : [time] usage : [usage] layers : [layer] 
                          (f, fs) = do  offsets = updateOffsets t i (getFrameDur f) offsets
                                        usage   = updateUsage   (t - lastOffset) usage        
                                        layers  = updateLayers  i fs layers
+                                       
                                        let (usage, music) = orchestrateFrame usage f orchs
                                            offsetMusic t music ++ (delay orchestrate_ t offsets usage layers orchs)
 
-updateOffsets t i d xs = update i (index i xs + d) xs       
-updateUsage   t     = filter (fn (x) fst x <= 0) . map (fn (x) (fst x - t, snd x))
-updateLayers  i fs  = update i fs
-
 ; [usage] -> frame -> [orchestration] -> ([usage], music) 
-orchestrateFrame usage : [usage] frame : frame orchs : [orchestration] =                
-    do  orchs   = retain ((flip apply) frame . getPredicate) orchs        
-        orchs   = map (withParts (filter ((flip elem) (map snd usage)))) orchs
-        orchs   = filter ((== []) . getParts) orchs        
+
+orchestrateFrame usage : [usage] frame : frame orchs : [orchestration] =    
+    let filterIllegal = filter hasNoParts 
+                      . map (removeBusyParts usage)
+                      . retain (acceptsFrame frame)
+                        
+        orchs         = filterIllegal orchs
         
         match orchs
-            _ : [] = do  print "warning: No orchestration"
+            _ : [] = do  warnNoOrchs ()
                          (usage, [])
-            _      = do  weights = map  ((flip apply) frame . getWeighter) orchs
-
-                         ; print ("  orchs  : " ++ string (map (map getName) (map getParts orchs))) 
-                         ; print ("  weights: " ++ string weights) 
-
+            _      = do  weights = map   (weightFrame frame) orchs
                          orch    = index (maximumIndex weights) orchs                
-                         music = (getOrchestrator orch) frame
-            
+
+                         if (matches `orchestration verbose) then (printOrchs orchs weights) else nil
+
                          ; TODO relies on orchestrators to set part for first event
+                         music   = (getOrchestrator orch) frame
                          part  = getPart (head music)
-                         usage = prepend (getFrameDur frame, part) usage
+                         dur = match ((lookup `padding . getOptions) orch)
+                             p : prec = getFrameDur frame + p
+                             _        = getFrameDur frame                            
+                         usage = prepend (dur, part) usage
                          (usage, music)
 
+updateOffsets t i d xs   = update i (index i xs + d) xs       
+updateUsage   t          = filter (fn (x) fst x <= 0) . map (fn (x) (fst x - t, snd x))
+updateLayers  i fs       = update i fs
 
+acceptsFrame frame       = (flip apply) frame . getPredicate
+weightFrame frame        = (flip apply) frame . getWeighter
+removeBusyParts usage    = withParts (filter (elementOf (map getUsagePart usage)))
+hasNoParts               = (== []) . getParts
+warnNoOrchs _            = do  print "warning: No orchestration"
+printOrchs orchs weights = do  print ("  orchs  : " ++ string (map (map getName) (map getParts orchs))) 
+                               print ("  weights: " ++ string weights)  
 
 
 ; =============================================================================
 ; Main data
 
-info  : [setting] = [ ("title",  "Skikt")
-                    , ("author", "Hans Hoglund 2011") ]
+info   : [setting] = [ ("title",  "Skikt")
+                     , ("author", "Hans Hoglund 2011") ]
 
-initMarks         = [ ("tempo", "*1/4* = #", 90) ]
-insts : [inst]    = [ ("perc1", "percussion",  [ "snare-drum"
-                                               , "bass-drum"
-                                               , "crash-cymbal"
-                                               , "splash-cymbal" ]) ]
+header : [mark]    = [ ("tempo", "*1/4* = #", 90) ]
+insts  : [inst]    = [ ("perc1", "percussion", [ "snare-drum", "bass-drum"
+                                              , "crash-cymbal", "splash-cymbal" ]) ]
+                                              
+fl   : part = ("fl",   "flute",          [ ("abbr", "Fl.") ])
+ob   : part = ("ob",   "oboe",           [ ("abbr", "Ob.") ])
+cl   : part = ("cl",   "bflat-clarinet", [ ("abbr", "Kl.") ])
+bsn  : part = ("bsn",  "bassoon",        [ ("abbr", "Fag.") ])
+hrn  : part = ("hrn",  "horn",           [ ("abbr", "Hrn."), ("name", "Horn in F") ])
+tpt  : part = ("tpt",  "bflat-trumpet",  [ ("abbr", "Tpt.") ])
+tbn  : part = ("tbn",  "tenor-trombone", [ ("abbr", "Tbn.") ])
+pno  : part = ("pno",  "piano",          [ ("abbr", "Pno.") ])
+vib  : part = ("vib",  "vibraphone",     [ ("abbr", "Vib.") ])
+crot : part = ("crot", "vibraphone",     [ ("abbr", "Crot."), ("name", "Crotales") ])
+prc  : part = ("perc", "perc1",          [ ("abbr", "Perc."), ("name", "Percussion") ])
+vl1  : part = ("vl1",  "violin",         [ ("abbr", "Vl. I") ])
+vl2  : part = ("vl2",  "violin",         [ ("abbr", "Vl. II") ])
+vla  : part = ("vla",  "viola",          [ ("abbr", "Vla.") ])
+vc   : part = ("vc",   "cello",          [ ("abbr", "Vc."), ("name", "Violoncello") ])
+db   : part = ("db",   "bass",           [ ("abbr", "Kb.") ])
 
-fl    : part = ("fl",   "flute",          [ ("abbr", "Fl.") ])
-ob    : part = ("ob",   "oboe",           [ ("abbr", "Ob.") ])
-cl    : part = ("cl",   "bflat-clarinet", [ ("abbr", "Kl.") ])
-bsn   : part = ("bsn",  "bassoon",        [ ("abbr", "Fag.") ])
-hrn   : part = ("hrn",  "horn",           [ ("abbr", "Hrn.")
-                                          , ("name", "Horn in F") ])
-tpt   : part = ("tpt",  "bflat-trumpet",  [ ("abbr", "Tpt.") ])
-tbn   : part = ("tbn",  "tenor-trombone", [ ("abbr", "Tbn.") ])
-pno   : part = ("pno",  "piano",          [ ("abbr", "Pno.") ])
-vib   : part = ("vib",  "vibraphone",     [ ("abbr", "Vib.") ])
-crot  : part = ("crot", "vibraphone",     [ ("abbr", "Crot.")
-                                          , ("name", "Crotales") ])
-prc   : part = ("perc", "perc1",          [ ("abbr", "Perc.")
-                                          , ("name", "Percussion") ])
-vl1   : part = ("vl1",  "violin",         [ ("abbr", "Vl. I") ])
-vl2   : part = ("vl2",  "violin",         [ ("abbr", "Vl. II") ])
-vla   : part = ("vla",  "viola",          [ ("abbr", "Vla.") ])
-vc    : part = ("vc",   "cello",          [ ("abbr", "Vc.")
-                                          , ("name", "Violoncello") ])
-db    : part = ("db",   "bass",           [ ("abbr", "Kb.") ])
-
-parts : [part] = [ fl, ob, cl, bsn, hrn, tpt, tbn
-                 , pno, vib, crot, prc, vl1, vl2, vla, vc, db ]
+parts : [part] = [ fl, ob, cl, bsn, hrn, tpt, tbn, pno, vib, crot, prc, vl1, vl2, vla, vc, db ]
 decls : [decl] = insts ++ parts
 
 percNote inst = match inst
@@ -734,13 +744,9 @@ percNote inst = match inst
     x : `smallCymbal = 76
     x : `largeCymbal = 79
 
-
-
-
 curve1 = (sigToPos . take 70 . map (* 1.2) . sinG . mulG (line 470) . cosG) (line 70)
 curve2 = (sigToPos . map negate . posToSig) curve1
 curve3 = reverse curve1
-
 curve4 = (sigToPos . take 70 . sinG . mulG (line 470) . cosG) (line 30)
 curve5 = (sigToPos . take 70 . sinG . addG (map (* 0.1) (sinG (line 30)))) (line 180)
 curve6 = (sigToPos . take 70 . sinG . (map (+ 0.11))) (line 180)
@@ -802,63 +808,58 @@ stdOrch   r ir f (d, pr, dr, n, s, e) =
 
 flutePizz                 = ( [fl], allPred [pitchRange (60, 93), durRange (0, 1 )]
                             , stdWeight (fn (dyn sat res)  sat )
-                            , stdOrch fl (60, 93) (setMarks ["pizz"]) )
+                            , stdOrch fl (60, 93) (setMarks ["pizz"])
+                            , [] )
 
 fluteToungeRam            = ( [fl], allPred [pitchRange (60, 71), durRange (0, 1 )]
                             , stdWeight (fn (dyn sat res)  sat )
-                            , stdOrch fl (60, 71) (setMarks [("x", "t-r.")]) )
+                            , stdOrch fl (60, 71) (setMarks [("x", "t-r.")])
+                            , [] )
 
 fluteShort                = ( [fl], allPred [pitchRange (60, 93), durRange (0, 1 )]
                             , (const 0.5)
-                            , stdOrch fl (60, 93) (setMarks ["."]) )
+                            , stdOrch fl (60, 93) (setMarks ["."])
+                            , [] )
 
 fluteContinuous           = ( [fl], allPred [pitchRange (60, 93), durRange (0, 12)]
                             , (const 0.5)
-                            , stdOrch fl (60, 93) id )    
+                            , stdOrch fl (60, 93) id   
+                            , [] )
 
 fluteContinuousFlz        = ( [fl], allPred [pitchRange (60, 93), durRange (0, 12)]
                             , stdWeight (fn (dyn sat res)  sat )
-                            , stdOrch fl (60, 93) (setMarks ["trem"]) )
+                            , stdOrch fl (60, 93) (setMarks ["trem"])
+                            , [] )
 
 oboeShort                 = ( [ob], allPred [pitchRange (62, 88), durRange (0, 1 )]
                             , (const 0.5)
-                            , stdOrch ob (62, 88) (setMarks ["."]) )
+                            , stdOrch ob (62, 88) (setMarks ["."])
+                            , [] )
 
 oboeContinuous            = ( [ob], allPred [pitchRange (62, 88), durRange (0, 12)]
                             , (const 0.5)
-                            , stdOrch ob (62, 88) id )
+                            , stdOrch ob (62, 88) id
+                            , [(`padding, 2)] )
 
 clarinetShort             = ( [cl], allPred [pitchRange (50, 86), durRange (0, 1 )]
                             , (const 0.5)
-                            , stdOrch cl (50, 86) (setMarks ["."]) )
+                            , stdOrch cl (50, 86) (setMarks ["."])
+                            , [] )
 
 clarinetContinuous        = ( [cl], allPred [pitchRange (50, 86), durRange (0, 12)]
                             , (const 0.5)
-                            , stdOrch cl (50, 86) id )
-
-clarinetContinuousFlz     = ( [cl], allPred [pitchRange (50, 86), durRange (0, 12)]
-                            , stdWeight (fn (dyn sat res)  sat )
-                            , stdOrch cl (50, 86) (setMarks ["trem"]) )
-
-; bassClarinetShort         = ( [cl], allPred [pitchRange (38, 72), durRange (0, 1 )]
-;                             , (const 0.5)
-;                             , stdOrch cl (38, 72) (setMarks ["."]) )
-; 
-; bassClarinetContinuous    = ( [cl], allPred [pitchRange (38, 72), durRange (0, 12)]
-;                             , (const 0.5)
-;                             , stdOrch cl (38, 72) id )
-; 
-; bassClarinetContinuousFlz = ( [cl], allPred [pitchRange (38, 72), durRange (0, 12)]
-;                             , stdWeight (fn (dyn sat res)  0.1 * dyn + 0.2 * sat + 0.0 * res )
-;                             , stdOrch cl (38, 72) (setMarks ["trem", ("x", "flz")]) )
+                            , stdOrch cl (50, 86) id
+                            , [] )
 
 bassoonShort              = ( [bsn], allPred [pitchRange (34, 67), durRange (0, 1 )]
                             , (const 0.5)
-                            , stdOrch bsn (34, 67) (setMarks ["."]) ) 
+                            , stdOrch bsn (34, 67) (setMarks ["."]) 
+                            , [] )
 
 bassoonContinuous         = ( [bsn], allPred [pitchRange (34, 67), durRange (0, 12)]
                             , (const 0.5)
-                            , stdOrch bsn (34, 67) id )
+                            , stdOrch bsn (34, 67) id
+                            , [] )
 
 ; hornShort                 = ([hrn],      (48, 71),  (1, 1),  nil, nil)
 ; hornShortStopped          = ([hrn],      (48, 71),  (1, 1),  nil, nil)
@@ -950,7 +951,7 @@ events _ =
     do  print "resolving orchestration..."
         (x, xs) = orchestrate layers orchestrations
         if preview
-            prepend (withMarks (++ initMarks) x) xs
+            prepend (withMarks (++ header) x) xs
             prepend x xs
 
 ; Main program
