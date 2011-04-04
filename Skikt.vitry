@@ -749,9 +749,36 @@ curve9 = (sigToPos . take 70 . sinG . addG (map (* 0.1) ((sinG . sinG) (line 60)
 
 
 
-layer1 = take 70 (zip6 (loop 5) (loop (60, 70)) (loop (1/2,1/2)) (curve1) (loop 0.1) (loop 0.1))
+; frame = (dur, range pitch, range dur, dynamic, saturation, resonance)
 
-layers = [layer1]
+short = take 70
+    zip6 
+        loop 5
+        loop (60, 70)
+        loop (1/2, 1/2)
+        curve1
+        loop 0.1
+        loop 0.1
+
+resonant = take 70
+    zip6 
+        loop 5
+        loop (60, 70)
+        loop (1/2, 1/2)
+        curve1
+        loop 0.1
+        loop 0.1
+
+long = take 70
+    zip6 
+        loop 5
+        loop (60, 70)
+        loop (1/2, 1/2)
+        curve1
+        loop 0.1
+        loop 0.1
+
+layers = [short, resonant, long]
 
 
 
