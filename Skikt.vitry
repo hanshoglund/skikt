@@ -11,7 +11,7 @@ module Hans.Music.Skikt
 scoreEditor = "/Applications/Sibelius 6.app"
 fileDir     = "/Users/hans/Documents/Musik/Skikt/output/"
 fileName    = "out"
-preview     = false
+preview     = true
 fixClefs    = false
 
 ; =============================================================================
@@ -681,12 +681,12 @@ orchestrateFrame usage : [usage] frame : frame orchs : [orchestration] =
         
         match orchs
             ; _ : () = error "No orchestrations available"
-            _ : () = do  print "Warning: No orchestration"
+            _ : () = do  print "warning: No orchestration"
                          (usage, [])
             _      = do  weights = map  ((flip apply) frame . getWeighter) orchs
 
-                         print ("  orchs  : " ++ string (map (map getName) (map getParts orchs))) 
-                         print ("  weights: " ++ string weights) 
+                         ; print ("  orchs  : " ++ string (map (map getName) (map getParts orchs))) 
+                         ; print ("  weights: " ++ string weights) 
 
                          orch    = index (maximumIndex weights) orchs                
                          music = (getOrchestrator orch) frame
@@ -766,7 +766,7 @@ curve9 = (sigToPos . take 70 . sinG . addG (map (* 0.1) ((sinG . sinG) (line 60)
 
 ; frame = (dur, range pitch, range dur, dynamic, saturation, resonance)
 
-short = take 70
+short = take 60
     zip6 
         loop 5
         loop (65, 67)
@@ -787,11 +787,11 @@ resonant = []
 ;         loop 0.1
 ;         loop 0.1 
 
-long = take 10
-    let durs = map ((* 3) . (+ 1)) (rands 5)
+long = take 60
+    let durs = map ((* 2) . (+ 1)) (rands 4)
         zip6 
             durs
-            zip (loop 60) (map ((+ 62) . (* 2) . rationalize) curve1)
+            zip (loop 60) (map ((+ 62) . (* 7) . rationalize) curve1)
             zip durs durs
         
             curve1
@@ -808,7 +808,8 @@ pitchRange r = isOverlapping r . getFramePitchRange
 
 stdWeight   f (_, _,  _,  n, s, e) = (f n s e)
 stdOrch   r ir f (d, pr, dr, n, s, e) =                        
-    let range = (overlap ir dr)
+    do  range = (overlap ir pr)
+        ; print range
         pitch = if (range == ()) (randomRange ir) else (randomRange range)
         map (f . setVoice [1, 2] . setPart r . setDyn n) (melody [randomRange dr] [pitch])
 
@@ -831,7 +832,7 @@ fluteContinuous           = ( [fl], allPred [pitchRange (60, 93), durRange (0, 1
 
 fluteContinuousFlz        = ( [fl], allPred [pitchRange (60, 93), durRange (0, 12)]
                             , stdWeight (fn (dyn sat res)  sat )
-                            , stdOrch fl (60, 93) (setMarks ["trem", ("x", "flz")]) )
+                            , stdOrch fl (60, 93) (setMarks ["trem"]) )
 
 oboeShort                 = ( [ob], allPred [pitchRange (62, 88), durRange (0, 1 )]
                             , (const 0.5)
@@ -851,7 +852,7 @@ clarinetContinuous        = ( [cl], allPred [pitchRange (50, 86), durRange (0, 1
 
 clarinetContinuousFlz     = ( [cl], allPred [pitchRange (50, 86), durRange (0, 12)]
                             , stdWeight (fn (dyn sat res)  sat )
-                            , stdOrch cl (50, 86) (setMarks ["trem", ("x", "flz")]) )
+                            , stdOrch cl (50, 86) (setMarks ["trem"]) )
 
 ; bassClarinetShort         = ( [cl], allPred [pitchRange (38, 72), durRange (0, 1 )]
 ;                             , (const 0.5)
@@ -934,7 +935,8 @@ bassoonContinuous         = ( [bsn], allPred [pitchRange (34, 67), durRange (0, 
 ; bassContinousHarm         = ([db],       (28, 52), (1, 1), nil, nil)
 ; 
 orchestrations   = [ flutePizz, fluteToungeRam, fluteShort, fluteContinuous, fluteContinuousFlz
-                   , oboeShort, oboeContinuous, clarinetShort, clarinetContinuous, clarinetContinuousFlz
+                   , oboeShort, oboeContinuous, clarinetShort, clarinetContinuous
+                   ; , clarinetContinuousFlz
                    ; , bassClarinetShort, bassClarinetContinuous, bassClarinetContinuousFlz
                    , bassoonShort, bassoonContinuous ]
 ; 
