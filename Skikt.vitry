@@ -568,7 +568,7 @@ plotMatrix xs ys =
                 FRAME_DISPOSE oldFrame
                 nil
             FRAME_SHOW frame
-            set window frame
+            set frame window
             nil
 
 paintPlot xs ys n g =
@@ -855,20 +855,19 @@ stdOrch   r ir f (d, pr, dr, n, s, e) =
 
 
 
-
-events _ =
-    do  print "resolving orchestrations..."
-        (x, xs) = orchestrate layers orchestrations
-        if preview
-            prepend (withMarks (++ header) x) xs
-            prepend x xs
-
 ; Main program
 
-printEvents _ = do force (map print (events nil))
-                   nil
-main _        = (export . fomus) (events nil, decls, info)
-test _        = fomus (events nil, decls, info)
-dump _        = join "\n" (events nil)
+events = ref []
+
+; events =
+;     do  print "resolving orchestrations..."
+;         (x, xs) = orchestrate layers orchestrations
+;         if preview
+;             prepend (withMarks (++ header) x) xs
+;             prepend x xs
+
+main _        = (export . fomus) (get events, decls, info)
+test _        = fomus (get events, decls, info)
+dump _        = join "\n" (get events)
 
 
