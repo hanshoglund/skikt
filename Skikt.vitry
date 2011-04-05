@@ -8,12 +8,13 @@
 
 module Hans.Music.Skikt
 
-scoreEditor = "/Applications/Sibelius 6.app"
-fileDir     = "/Users/hans/Documents/Musik/Skikt/output/"
-fileName    = "out"
-preview     = false
-fixClefs    = false
-verbose     = `output
+scoreEditor      = "/Applications/Sibelius 6.app"
+fileDir          = "/Users/hans/Documents/Musik/Skikt/output/"
+fileName         = "out"
+preview          = false
+fixClefs         = false
+verbose          = `output
+nonDeterministic = `orchestration
 
 ; =============================================================================
 ; FOMUS
@@ -702,7 +703,7 @@ orchestrateFrame usage : [usage] frame : frame orchs : [orchestration] =
             _ : [] = do  warnNoOrchs ()
                          (usage, [])
             _      = do  weights = map   (weightFrame frame) orchs
-                         orch    = index (maximumIndex weights) orchs
+                         orch    = index (maximumWeight weights) orchs
 
                          if (matches `orchestration verbose) then (printOrchs orchs weights) else nil
 
@@ -721,6 +722,7 @@ updateLayers  i fs       = update i fs
 acceptsFrame frame       = (flip apply) frame . getPredicate
 weightFrame frame        = (flip apply) frame . getWeighter
 somePartBusy usage       = any (elementOf (concat (map getUsagePart usage))) . getParts
+maximumWeight            = if (matches `orchestration nonDeterministic) then anyMaximumIndex else maximumIndex
 warnNoOrchs _            = do  print "warning: no orchestration"
 printOrchs orchs weights = do  print ("  orchs  : " ++ string (map (map getName) (map getParts orchs)))
                                print ("  weights: " ++ string weights)
@@ -782,39 +784,34 @@ density    = double
 saturation = double
 resonance  = double
 
-frame = (dur, range pitch, range dur, dynamic, density, saturation, resonance)
+frame = (dur, [pitch], [dur], dynamic, density, saturation, resonance)
 layer = [frame]
 
-getFrameDur        (d, _,  _,  _, _, _) = d
-getFramePitchRange (_, pr, _,  _, _, _) = pr
-getFrameDurRange   (_, _,  dr, _, _, _) = dr
-getFrameDynamic    (_, _,  _,  n, _, _) = n
-getFrameDensity    (_, _,  _,  n, _, _) = n
-getFrameSaturation (_, _,  _,  _, s, _) = s
-getFrameResonance  (_, _,  _,  _, _, e) = e
+getFrameDur        (d, _,  _,  _, _, _, _) = d
+getFramePitches    (_, ps, _,  _, _, _, _) = ps
+getFrameDurs       (_, _,  ds, _, _, _, _) = ds
+getFrameDynamic    (_, _,  _,  n, _, _, _) = n
+getFrameDensity    (_, _,  _,  _, t, _, _) = t
+getFrameSaturation (_, _,  _,  _, _, s, _) = s
+getFrameResonance  (_, _,  _,  _, _, _, r) = r
 
 
 short = take 60
     zip7
         map ((* 3) . (+ 1)) (rands 5)
-        loop (65, 67)
-        loop (1/2, 1/2)
-
+        loop [65]
+        loop [(1/2)]
         curve1
         curve1
         curve1
         loop 0.1
 
-layers = [short]
+layers : [layer] = [short]
 
 
 
-stdWeight   f (_, _,  _,  n, s, e) = (f n s e)
-stdOrch   r ir f (d, pr, dr, n, s, e) =
-    do  range = (overlap ir pr)
-        ; print range
-        pitch = if (range == ()) (randomRange ir) else (randomRange range)
-        map (f . setVoice [1, 2] . setPart r . setDyn n) (melody [randomRange dr] [pitch])
+
+orchestrations : [orchestration] = []
 
 
 
