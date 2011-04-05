@@ -800,8 +800,8 @@ getFrameResonance  (_, _,  _,  _, _, _, r) = r
 short = take 60
     zip7
         map ((* 3) . (+ 1)) (rands 5)
-        loop [(1/2)]
-        map single $ cycle (50 .. 80)
+        loop [1/2, 1/2, 1/2]
+        map major $ cycle (50 .. 80)
         curve1
         curve1
         curve1
@@ -814,18 +814,46 @@ layers : [layer] = [short]
 durRange   r = all (inRange r) . getFrameDurs
 pitchRange r = all (inRange r) . getFramePitches
 
-melodyOrchestration (d, ds, ps, n, t, s, r) = melody ds ps
+; ([dur] -> [pitch]) -> frame -> music
+lineOrch     f (d, ds, ps, n, t, s, r) = f ds ps
+
+; (dur -> [pitch]) -> frame -> music
+harmOrch     f (d, ds, ps, n, t, s, r) = f (pick ds) ps
+longHarmOrch f (d, ds, ps, n, t, s, r) = f d ps
+
 
 ; [part] -> music -> music
 toParts parts : [part] music : music = concat $ map (fn (p) mapMusic (setPart p) music) parts
 
 
 orchestrations : [orchestration] = 
-    [ ([fl],     pitchRange (60, 93), const 0.0, toParts [fl]     . melodyOrchestration, [])
-    , ([ob],     pitchRange (62, 88), const 0.0, toParts [ob]     . melodyOrchestration, [])
-    , ([cl],     pitchRange (50, 86), const 0.0, toParts [cl]     . melodyOrchestration, [])
-    , ([bsn],    pitchRange (34, 67), const 0.0, toParts [bsn]    . melodyOrchestration, [])
-    , ([fl, ob], pitchRange (62, 88), const 0.0, toParts [fl, ob] . melodyOrchestration, []) ]
+    [ ([fl],     pitchRange (60, 93), const 0.0, toParts [fl]     . lineOrch melody, [])
+    , ([ob],     pitchRange (62, 88), const 0.0, toParts [ob]     . lineOrch melody, [])
+    , ([cl],     pitchRange (50, 86), const 0.0, toParts [cl]     . lineOrch melody, [])
+    , ([bsn],    pitchRange (34, 67), const 0.0, toParts [bsn]    . lineOrch melody, [])
+    , ([hrn],    pitchRange (48, 71), const 0.0, toParts [hrn]    . lineOrch melody, [])
+    , ([tpt],    pitchRange (53, 81), const 0.0, toParts [tpt]    . lineOrch melody, [])
+    , ([tbn],    pitchRange (40, 69), const 0.0, toParts [tbn]    . lineOrch melody, [])
+    , ([vl1],    pitchRange (55, 91), const 0.0, toParts [vl1]    . lineOrch melody, [])
+    , ([vl2],    pitchRange (55, 91), const 0.0, toParts [vl2]    . lineOrch melody, [])
+    , ([vla],    pitchRange (48, 84), const 0.0, toParts [vla]    . lineOrch melody, [])
+    , ([vc],     pitchRange (36, 72), const 0.0, toParts [vc]     . lineOrch melody, [])
+    , ([db],     pitchRange (28, 52), const 0.0, toParts [db]     . lineOrch melody, [])
+    
+    , ([fl],     pitchRange (60, 93), const 0.0, toParts [fl]     . lineOrch staccato, [])
+    , ([ob],     pitchRange (62, 88), const 0.0, toParts [ob]     . lineOrch staccato, [])
+    , ([cl],     pitchRange (50, 86), const 0.0, toParts [cl]     . lineOrch staccato, [])
+    , ([bsn],    pitchRange (34, 67), const 0.0, toParts [bsn]    . lineOrch staccato, [])
+    , ([hrn],    pitchRange (48, 71), const 0.0, toParts [hrn]    . lineOrch staccato, [])
+    , ([tpt],    pitchRange (53, 81), const 0.0, toParts [tpt]    . lineOrch staccato, [])
+    , ([tbn],    pitchRange (40, 69), const 0.0, toParts [tbn]    . lineOrch staccato, [])
+    , ([vl1],    pitchRange (55, 91), const 0.0, toParts [vl1]    . lineOrch staccato, [])
+    , ([vl2],    pitchRange (55, 91), const 0.0, toParts [vl2]    . lineOrch staccato, [])
+    , ([vla],    pitchRange (48, 84), const 0.0, toParts [vla]    . lineOrch staccato, [])
+    , ([vc],     pitchRange (36, 72), const 0.0, toParts [vc]     . lineOrch staccato, [])
+    , ([db],     pitchRange (28, 52), const 0.0, toParts [db]     . lineOrch staccato, [])
+    
+    , ([fl, ob], pitchRange (62, 88), const 0.0, toParts [fl, ob] . lineOrch melody, []) ]
 
 
 
