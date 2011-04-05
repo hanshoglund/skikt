@@ -784,12 +784,12 @@ density    = double
 saturation = double
 resonance  = double
 
-frame = (dur, [pitch], [dur], dynamic, density, saturation, resonance)
+frame = (dur, [dur], [pitch], dynamic, density, saturation, resonance)
 layer = [frame]
 
 getFrameDur        (d, _,  _,  _, _, _, _) = d
-getFramePitches    (_, ps, _,  _, _, _, _) = ps
-getFrameDurs       (_, _,  ds, _, _, _, _) = ds
+getFrameDurs       (_, ds, _,  _, _, _, _) = ds
+getFramePitches    (_, _,  ps,  _, _, _, _) = ps
 getFrameDynamic    (_, _,  _,  n, _, _, _) = n
 getFrameDensity    (_, _,  _,  _, t, _, _) = t
 getFrameSaturation (_, _,  _,  _, _, s, _) = s
@@ -799,8 +799,8 @@ getFrameResonance  (_, _,  _,  _, _, _, r) = r
 short = take 60
     zip7
         map ((* 3) . (+ 1)) (rands 5)
-        loop [65]
         loop [(1/2)]
+        loop [65]
         curve1
         curve1
         curve1
@@ -811,7 +811,10 @@ layers : [layer] = [short]
 
 
 
-orchestrations : [orchestration] = []
+melodyOrchestration (d, ds, ps, n, t, s, r) = melody ds ps
+
+orchestrations : [orchestration] = 
+    [ ([fl], const true, const 0.0, mapMusic (setPart fl) . melodyOrchestration, []) ]
 
 
 
@@ -879,19 +882,21 @@ orchestrations : [orchestration] = []
 
 ; Main program
 
-events = ref []
-
-; events =
-;     do  print "resolving orchestrations..."
-;         (x, xs) = orchestrate layers orchestrations
+; getEvents =
+;     do  (x, xs) = orchestrate layers orchestrations
 ;         if preview
 ;             prepend (withMarks (++ header) x) xs
-;             prepend x xs
+;             prepend x xs 
+
+events = ref (orchestrate layers orchestrations)
 
 main _         = (export . fomus) (get events, decls, info)
 test _         = fomus (get events, decls, info)
+
 main2 music   = do  set (mapMusic (setPart fl) music) events
                      main ()
 test2 music   = do  set (mapMusic (setPart fl) music) events
                      test ()
-dump _         = join "\n" (get events)
+dump x        = match x
+    _ : events = join "\n" (get events)
+    _          = join "\n" x
