@@ -13,8 +13,9 @@ fileDir          = "/Users/hans/Documents/Musik/Skikt/output/"
 fileName         = "out"
 preview          = false
 fixClefs         = false
-verbose          = `output
-nonDeterministic = nil
+verbose          = `output 
+                 & `orchestration
+nonDeterministic = nil 
                  & `orchestration
 
 ; =============================================================================
@@ -289,10 +290,12 @@ chord = chordT 0
 chords = chordsT 0 "+"
 
 ; [mark] -> [mark] -> [mark] -> [note] -> [note]
-phraseNotes attack sustain release notes =
-    [setMarks attack (head notes)]
-    ++ map (setMarks sustain) ((init . tail) notes)
-    ++ [setMarks release (last notes)]
+phraseNotes attack sustain release notes = match notes
+    _ : ()      = () 
+    (x, _ : ()) = [setMarks attack x]
+    _           = [setMarks attack (head notes)]
+                  ++ map (setMarks sustain) ((init . tail) notes)
+                  ++ [setMarks release (last notes)]
 
 ; [mark] -> [mark] -> [mark] -> [dur] -> [pitch]
 phrase attack sustain release       = phraseNotes attack sustain release .' melody
@@ -704,9 +707,10 @@ orchestrateFrame usage : [usage] frame : frame orchs : [orchestration] =
             _ : [] = do  warnNoOrchs ()
                          (usage, [])
             _      = do  weights = map   (weightFrame frame) orchs
-                         orch    = index (maximumWeight weights) orchs
+                         i       = maximumWeight weights
+                         orch    = index i orchs
 
-                         if (matches `orchestration verbose) then (printOrchs orchs weights) else nil
+                         if (matches `orchestration verbose) then (printOrchs orchs weights i) else nil
 
                          music = (getOrchestrator orch) frame
                          parts  = getParts orch
@@ -725,8 +729,10 @@ weightFrame frame        = (flip apply) frame . getWeighter
 somePartBusy usage       = any (elementOf (concat (map getUsagePart usage))) . getParts
 maximumWeight            = if (matches `orchestration nonDeterministic) then anyMaximumIndex else maximumIndex
 warnNoOrchs _            = do  print "warning: no orchestration"
-printOrchs orchs weights = do  print ("  orchs  : " ++ string (map (map getName) (map getParts orchs)))
-                               print ("  weights: " ++ string weights)
+                               nil
+printOrchs orchs weights i = do  print ("  orchs  : " ++ string (map (map getName) (map getParts orchs)))
+                                 print ("  weights: " ++ string weights)
+                                 print ("  chosen: "  ++ string i)
 
 
 ; =============================================================================
@@ -800,8 +806,9 @@ getFrameResonance  (_, _,  _,  _, _, _, r) = r
 short = take 60
     zip7
         map ((* 3) . (+ 1)) (rands 5)
-        loop [1/2, 1/2, 1/2]
+        loop [(1/2)]
         map single $ cycle (50 .. 80)
+        
         curve8
         curve2
         curve3
@@ -840,18 +847,18 @@ orchestrations : [orchestration] =
     , ([vc],     pitchRange (36, 72), const 0.0, toParts [vc]     . lineOrch melody, [])
     , ([db],     pitchRange (28, 52), const 0.0, toParts [db]     . lineOrch melody, [])
     
-    , ([fl],     pitchRange (60, 93), const 0.0, toParts [fl]     . lineOrch staccato, [])
-    , ([ob],     pitchRange (62, 88), const 0.0, toParts [ob]     . lineOrch staccato, [])
-    , ([cl],     pitchRange (50, 86), const 0.0, toParts [cl]     . lineOrch staccato, [])
-    , ([bsn],    pitchRange (34, 67), const 0.0, toParts [bsn]    . lineOrch staccato, [])
-    , ([hrn],    pitchRange (48, 71), const 0.0, toParts [hrn]    . lineOrch staccato, [])
-    , ([tpt],    pitchRange (53, 81), const 0.0, toParts [tpt]    . lineOrch staccato, [])
-    , ([tbn],    pitchRange (40, 69), const 0.0, toParts [tbn]    . lineOrch staccato, [])
-    , ([vl1],    pitchRange (55, 91), const 0.0, toParts [vl1]    . lineOrch staccato, [])
-    , ([vl2],    pitchRange (55, 91), const 0.0, toParts [vl2]    . lineOrch staccato, [])
-    , ([vla],    pitchRange (48, 84), const 0.0, toParts [vla]    . lineOrch staccato, [])
-    , ([vc],     pitchRange (36, 72), const 0.0, toParts [vc]     . lineOrch staccato, [])
-    , ([db],     pitchRange (28, 52), const 0.0, toParts [db]     . lineOrch staccato, [])
+    , ([fl],     allPred [pitchRange (60, 93), durRange (0, 1)], const 0.0, toParts [fl]     . lineOrch staccato, [])
+    , ([ob],     allPred [pitchRange (62, 88), durRange (0, 1)], const 0.0, toParts [ob]     . lineOrch staccato, [])
+    , ([cl],     allPred [pitchRange (50, 86), durRange (0, 1)], const 0.0, toParts [cl]     . lineOrch staccato, [])
+    , ([bsn],    allPred [pitchRange (34, 67), durRange (0, 1)], const 0.0, toParts [bsn]    . lineOrch staccato, [])
+    , ([hrn],    allPred [pitchRange (48, 71), durRange (0, 1)], const 0.0, toParts [hrn]    . lineOrch staccato, [])
+    , ([tpt],    allPred [pitchRange (53, 81), durRange (0, 1)], const 0.0, toParts [tpt]    . lineOrch staccato, [])
+    , ([tbn],    allPred [pitchRange (40, 69), durRange (0, 1)], const 0.0, toParts [tbn]    . lineOrch staccato, [])
+    , ([vl1],    allPred [pitchRange (55, 91), durRange (0, 1)], const 0.0, toParts [vl1]    . lineOrch staccato, [])
+    , ([vl2],    allPred [pitchRange (55, 91), durRange (0, 1)], const 0.0, toParts [vl2]    . lineOrch staccato, [])
+    , ([vla],    allPred [pitchRange (48, 84), durRange (0, 1)], const 0.0, toParts [vla]    . lineOrch staccato, [])
+    , ([vc],     allPred [pitchRange (36, 72), durRange (0, 1)], const 0.0, toParts [vc]     . lineOrch staccato, [])
+    , ([db],     allPred [pitchRange (28, 52), durRange (0, 1)], const 0.0, toParts [db]     . lineOrch staccato, [])
     
     , ([fl, ob], pitchRange (62, 88), const 0.0, toParts [fl, ob] . lineOrch melody, []) ]
 
