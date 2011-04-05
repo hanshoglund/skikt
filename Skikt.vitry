@@ -832,6 +832,7 @@ lineOrch     f (d, ds, ps, n, t, s, r) = mapMusic (setDyn n) $ f ds ps
 ; (dur -> [pitch]) -> frame -> music
 harmOrch     f (d, ds, ps, n, t, s, r) = mapMusic (setDyn n) $ f (pick ds) ps
 longHarmOrch f (d, ds, ps, n, t, s, r) = mapMusic (setDyn n) $ f d ps
+percOrch     id (d, ds, ps, n, t, s, r) = mapMusic (setDyn n) $ notes [0] ["+"] [percNote id]
 
 ; music -> music
 artHarm music = map (addMark "artharm-sounding") music
@@ -862,15 +863,24 @@ orchestrations : [orchestration] =
     , ([tpt],    pitchRange (53, 81),               const 0.0,          toParts [tpt] . (map (addMark "mute") . lineOrch melody), [])
     , ([tbn],    pitchRange (40, 69),               const 0.0,          toParts [tbn] . (map (addMark "mute") . lineOrch melody), [])
 
-    , ([pno],    pitchDurRange (21, 108) (0, 1),    const 0.0,          toParts [pno]  . lineOrch staccato, [])
-    , ([crot],   pitchDurRange (84, 96)  (0, 1),    const 0.0,          toParts [crot] . lineOrch staccato, [])
-    , ([vib],    pitchDurRange (53, 89)  (0, 1),    const 0.0,          toParts [vib]  . lineOrch staccato, [])
-    , ([pno],    pitchDurRange (21, 108) (0, 1),    const 0.0,          toParts [pno]  . harmOrch chord, [])
-    , ([crot],   pitchDurRange (84, 96)  (0, 1),    const 0.0,          toParts [crot] . harmOrch chord, [])
-    , ([vib],    pitchDurRange (53, 89)  (0, 1),    const 0.0,          toParts [vib]  . harmOrch chord, [])
-    , ([pno],    pitchDurRange (21, 108) (0, 1),    const 0.1,          toParts [pno]  . longHarmOrch chord, [])
-    , ([crot],   pitchDurRange (84, 96)  (0, 1),    const 0.1,          toParts [crot] . longHarmOrch chord, [])
-    , ([vib],    pitchDurRange (53, 89)  (0, 1),    const 0.1,          toParts [vib]  . longHarmOrch chord, [])
+    , ([prc],    durRange (0, 1),                   const 0.1,          toParts [prc]  . percOrch `bassDrum, [])
+    , ([prc],    durRange (2, 10),                  const 0.1,          toParts [prc]  . percOrch `snareDrum, [])
+    , ([prc],    durRange (0, 1),                   const 0.1,          toParts [prc]  . percOrch `smallCymbal, [])
+    , ([prc],    durRange (2, 10),                  const 0.1,          toParts [prc]  . percOrch `largeCymbal, [])
+    , ([prc],    const true,                        const 0.1,          toParts [prc]  . (map (addMark "trem") . percOrch `bassDrum), [])
+    , ([prc],    const true,                        const 0.1,          toParts [prc]  . (map (addMark "trem") . percOrch `snareDrum), [])
+    , ([prc],    const true,                        const 0.1,          toParts [prc]  . (map (addMark "trem") . percOrch `smallCymbal), [])
+    , ([prc],    const true,                        const 0.1,          toParts [prc]  . (map (addMark "trem") . percOrch `largeCymbal), [])
+
+    , ([pno],       pitchDurRange (21, 108) (0, 1),    const 0.0,          toParts [pno]  . lineOrch staccato, [])
+    , ([crot, vib], pitchDurRange (84, 96)  (0, 1),    const 0.0,          toParts [crot] . lineOrch staccato, [])
+    , ([crot, vib], pitchDurRange (53, 89)  (0, 1),    const 0.0,          toParts [vib]  . lineOrch staccato, [])
+    , ([pno],       pitchDurRange (21, 108) (0, 1),    const 0.0,          toParts [pno]  . harmOrch chord, [])
+    , ([crot, vib], pitchDurRange (84, 96)  (0, 1),    const 0.0,          toParts [crot] . harmOrch chord, [])
+    , ([crot, vib], pitchDurRange (53, 89)  (0, 1),    const 0.0,          toParts [vib]  . harmOrch chord, [])
+    , ([pno],       pitchDurRange (21, 108) (0, 1),    const 0.0,          toParts [pno]  . longHarmOrch chord, [])
+    , ([crot, vib], pitchDurRange (84, 96)  (0, 1),    const 0.0,          toParts [crot] . longHarmOrch chord, [])
+    , ([crot, vib], pitchDurRange (53, 89)  (0, 1),    const 0.0,          toParts [vib]  . longHarmOrch chord, [])
                                                                     
     , ([vl1],    pitchRange (55, 91),               const 0.0,          toParts [vl1] . lineOrch melody, [])
     , ([vl2],    pitchRange (55, 91),               const 0.0,          toParts [vl2] . lineOrch melody, [])
