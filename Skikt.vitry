@@ -799,7 +799,7 @@ layer = [frame]
 
 getFrameDur        (d, _,  _,  _, _, _, _) = d
 getFrameDurs       (_, ds, _,  _, _, _, _) = ds
-getFramePitches    (_, _,  ps,  _, _, _, _) = ps
+getFramePitches    (_, _,  ps, _, _, _, _) = ps
 getFrameDynamic    (_, _,  _,  n, _, _, _) = n
 getFrameDensity    (_, _,  _,  _, t, _, _) = t
 getFrameSaturation (_, _,  _,  _, _, s, _) = s
@@ -821,13 +821,14 @@ short = take 60
 layers : [layer] = [short]
 
 
+
 ; range -> frame -> bool
 durRange   r = all (inRange r) . getFrameDurs
 pitchRange r = all (inRange r) . getFramePitches
+pitchDurRange ps ds = allPred [pitchRange ps, durRange ds]
 
 ; ([dur] -> [pitch]) -> frame -> music
 lineOrch     f (d, ds, ps, n, t, s, r) = mapMusic (setDyn n) $ f ds ps
-
 ; (dur -> [pitch]) -> frame -> music
 harmOrch     f (d, ds, ps, n, t, s, r) = mapMusic (setDyn n) $ f (pick ds) ps
 longHarmOrch f (d, ds, ps, n, t, s, r) = mapMusic (setDyn n) $ f d ps
@@ -835,79 +836,83 @@ longHarmOrch f (d, ds, ps, n, t, s, r) = mapMusic (setDyn n) $ f d ps
 ; music -> music
 artHarm music = map (addMark "artharm-sounding") music
              ++ map (withPitch (+ (-19)) . addMark "artharm-touched") music
-             ++ map (withPitch (+ (-24)) . addMark "artharm-base"   ) music
-            
+             ++ map (withPitch (+ (-24)) . addMark "artharm-base"   ) music            
 ; [part] -> music -> music
 toParts parts : [part] music : music = concat $ map (fn (p) mapMusic (setPart p) music) parts
 
 
 orchestrations : [orchestration] = 
-    [ ([fl],     pitchRange (60, 93), const 0.0, toParts [fl]  . lineOrch melody, [])
-    , ([ob],     pitchRange (62, 88), const 0.0, toParts [ob]  . lineOrch melody, [])
-    , ([cl],     pitchRange (50, 86), const 0.0, toParts [cl]  . lineOrch melody, [])
-    , ([bsn],    pitchRange (34, 67), const 0.0, toParts [bsn] . lineOrch melody, [])
-    , ([hrn],    pitchRange (48, 71), const 0.0, toParts [hrn] . lineOrch melody, [])
-    , ([tpt],    pitchRange (53, 81), const 0.0, toParts [tpt] . lineOrch melody, [])
-    , ([tbn],    pitchRange (40, 69), const 0.0, toParts [tbn] . lineOrch melody, [])
-    , ([fl],     allPred [pitchRange (60, 93), durRange (0, 1)], const 0.0, toParts [fl]  . lineOrch staccato, [])
-    , ([ob],     allPred [pitchRange (62, 88), durRange (0, 1)], const 0.0, toParts [ob]  . lineOrch staccato, [])
-    , ([cl],     allPred [pitchRange (50, 86), durRange (0, 1)], const 0.0, toParts [cl]  . lineOrch staccato, [])
-    , ([bsn],    allPred [pitchRange (34, 67), durRange (0, 1)], const 0.0, toParts [bsn] . lineOrch staccato, [])
-    , ([hrn],    allPred [pitchRange (48, 71), durRange (0, 1)], const 0.0, toParts [hrn] . lineOrch staccato, [])
-    , ([tpt],    allPred [pitchRange (53, 81), durRange (0, 1)], const 0.0, toParts [tpt] . lineOrch staccato, [])
-    , ([tbn],    allPred [pitchRange (40, 69), durRange (0, 1)], const 0.0, toParts [tbn] . lineOrch staccato, [])
+    [ ([fl],     pitchRange (60, 93),               const 0.0,          toParts [fl]  . lineOrch melody, [])
+    , ([ob],     pitchRange (62, 88),               const 0.0,          toParts [ob]  . lineOrch melody, [])
+    , ([cl],     pitchRange (50, 86),               const 0.0,          toParts [cl]  . lineOrch melody, [])
+    , ([bsn],    pitchRange (34, 67),               const 0.0,          toParts [bsn] . lineOrch melody, [])
+    , ([fl],     pitchDurRange (60, 93) (0, 1),     const 0.0,          toParts [fl]  . lineOrch staccato, [])
+    , ([ob],     pitchDurRange (62, 88) (0, 1),     const 0.0,          toParts [ob]  . lineOrch staccato, [])
+    , ([cl],     pitchDurRange (50, 86) (0, 1),     const 0.0,          toParts [cl]  . lineOrch staccato, [])
+    , ([bsn],    pitchDurRange (34, 67) (0, 1),     const 0.0,          toParts [bsn] . lineOrch staccato, [])
 
-    , ([vl1],    pitchRange (55, 91), const 0.0, toParts [vl1] . lineOrch melody, [])
-    , ([vl2],    pitchRange (55, 91), const 0.0, toParts [vl2] . lineOrch melody, [])
-    , ([vla],    pitchRange (48, 84), const 0.0, toParts [vla] . lineOrch melody, [])
-    , ([vc],     pitchRange (36, 72), const 0.0, toParts [vc]  . lineOrch melody, [])
-    , ([db],     pitchRange (28, 52), const 0.0, toParts [db]  . lineOrch melody, [])
-    , ([vl1],    allPred [pitchRange (55, 91), durRange (0, 1)], const 0.0, toParts [vl1] . lineOrch staccato, [])
-    , ([vl2],    allPred [pitchRange (55, 91), durRange (0, 1)], const 0.0, toParts [vl2] . lineOrch staccato, [])
-    , ([vla],    allPred [pitchRange (48, 84), durRange (0, 1)], const 0.0, toParts [vla] . lineOrch staccato, [])
-    , ([vc],     allPred [pitchRange (36, 72), durRange (0, 1)], const 0.0, toParts [vc]  . lineOrch staccato, [])
-    , ([db],     allPred [pitchRange (28, 52), durRange (0, 1)], const 0.0, toParts [db]  . lineOrch staccato, [])
-    , ([vl1],    allPred [pitchRange (55, 91), durRange (0, 1)], const 0.0, toParts [vl1] . lineOrch pizz, [])
-    , ([vl2],    allPred [pitchRange (55, 91), durRange (0, 1)], const 0.0, toParts [vl2] . lineOrch pizz, [])
-    , ([vla],    allPred [pitchRange (48, 84), durRange (0, 1)], const 0.0, toParts [vla] . lineOrch pizz, [])
-    , ([vc],     allPred [pitchRange (36, 72), durRange (0, 1)], const 0.0, toParts [vc]  . lineOrch pizz, [])
-    , ([db],     allPred [pitchRange (28, 52), durRange (0, 1)], const 0.0, toParts [db]  . lineOrch pizz, [])    
-    , ([vl1],    pitchRange (79, 100), const 0.0, (toParts [vl1] . artHarm) . lineOrch melody, [])
-    , ([vl2],    pitchRange (79, 100), const 0.0, (toParts [vl2] . artHarm) . lineOrch melody, [])
-    , ([vla],    pitchRange (72, 90), const 0.0,  (toParts [vla] . artHarm) . lineOrch melody, [])
-    , ([vc],     pitchRange (60, 80), const 0.0,  (toParts [vc]  . artHarm) . lineOrch melody, [])
-    , ([db],     pitchRange (60, 70), const 0.0,  (toParts [db]  . artHarm) . lineOrch melody, [])
-    , ([vl1],    pitchRange (79, 100), const 0.0, (toParts [vl1] . artHarm) . lineOrch melody, [])
-    , ([vl2],    pitchRange (79, 100), const 0.0, (toParts [vl2] . artHarm) . lineOrch melody, [])
-    , ([vla],    pitchRange (72, 90), const 0.0,  (toParts [vla] . artHarm) . lineOrch melody, [])
-    , ([vc],     pitchRange (60, 80), const 0.0,  (toParts [vc]  . artHarm) . lineOrch melody, [])
-    , ([db],     pitchRange (52, 60), const 0.0,  (toParts [db]  . artHarm) . lineOrch melody, [])
-    , ([vl1],    pitchRange (79, 100), const 0.0, (toParts [vl1] . artHarm) . lineOrch pizz, [])
-    , ([vl2],    pitchRange (79, 100), const 0.0, (toParts [vl2] . artHarm) . lineOrch pizz, [])
-    , ([vla],    pitchRange (72, 90), const 0.0,  (toParts [vla] . artHarm) . lineOrch pizz, [])
-    , ([vc],     pitchRange (60, 80), const 0.0,  (toParts [vc]  . artHarm) . lineOrch pizz, [])
-    , ([db],     pitchRange (52, 60), const 0.0,  (toParts [db]  . artHarm) . lineOrch pizz, [])
+    , ([hrn],    pitchRange (48, 71),               const 0.0,          toParts [hrn] . lineOrch melody, [])
+    , ([tpt],    pitchRange (53, 81),               const 0.0,          toParts [tpt] . lineOrch melody, [])
+    , ([tbn],    pitchRange (40, 69),               const 0.0,          toParts [tbn] . lineOrch melody, [])
+    , ([hrn],    pitchDurRange (48, 71) (0, 1),     const 0.0,          toParts [hrn] . lineOrch staccato, [])
+    , ([tpt],    pitchDurRange (53, 81) (0, 1),     const 0.0,          toParts [tpt] . lineOrch staccato, [])
+    , ([tbn],    pitchDurRange (40, 69) (0, 1),     const 0.0,          toParts [tbn] . lineOrch staccato, [])
+    ; , ([hrn],    pitchRange (48, 71),               const 0.0,          toParts [hrn] . (map (addMark "+") . lineOrch melody), [])
+    , ([hrn],    pitchRange (48, 71),               const 0.0,          toParts [hrn] . (map (addMark "mute") . lineOrch melody), [])
+    , ([tpt],    pitchRange (53, 81),               const 0.0,          toParts [tpt] . (map (addMark "mute") . lineOrch melody), [])
+    , ([tbn],    pitchRange (40, 69),               const 0.0,          toParts [tbn] . (map (addMark "mute") . lineOrch melody), [])
+                                                                    
+    , ([vl1],    pitchRange (55, 91),               const 0.0,          toParts [vl1] . lineOrch melody, [])
+    , ([vl2],    pitchRange (55, 91),               const 0.0,          toParts [vl2] . lineOrch melody, [])
+    , ([vla],    pitchRange (48, 84),               const 0.0,          toParts [vla] . lineOrch melody, [])
+    , ([vc],     pitchRange (36, 72),               const 0.0,          toParts [vc]  . lineOrch melody, [])
+    , ([db],     pitchRange (28, 52),               const 0.0,          toParts [db]  . lineOrch melody, [])
+    , ([vl1],    pitchRange (55, 91),               const 0.0,          toParts [vl1] . lineOrch tenuto, [])
+    , ([vl2],    pitchRange (55, 91),               const 0.0,          toParts [vl2] . lineOrch tenuto, [])
+    , ([vla],    pitchRange (48, 84),               const 0.0,          toParts [vla] . lineOrch tenuto, [])
+    , ([vc],     pitchRange (36, 72),               const 0.0,          toParts [vc]  . lineOrch tenuto, [])
+    , ([db],     pitchRange (28, 52),               const 0.0,          toParts [db]  . lineOrch tenuto, [])
+    , ([vl1],    pitchDurRange (55, 91) (0, 2),     const 0.0,          toParts [vl1] . lineOrch staccato, [])
+    , ([vl2],    pitchDurRange (55, 91) (0, 2),     const 0.0,          toParts [vl2] . lineOrch staccato, [])
+    , ([vla],    pitchDurRange (48, 84) (0, 2),     const 0.0,          toParts [vla] . lineOrch staccato, [])
+    , ([vc],     pitchDurRange (36, 72) (0, 2),     const 0.0,          toParts [vc]  . lineOrch staccato, [])
+    , ([db],     pitchDurRange (28, 52) (0, 2),     const 0.0,          toParts [db]  . lineOrch staccato, [])
+    , ([vl1],    pitchDurRange (55, 91) (0, 1),     const 0.0,          toParts [vl1] . lineOrch pizz, [])
+    , ([vl2],    pitchDurRange (55, 91) (0, 1),     const 0.0,          toParts [vl2] . lineOrch pizz, [])
+    , ([vla],    pitchDurRange (48, 84) (0, 1),     const 0.0,          toParts [vla] . lineOrch pizz, [])
+    , ([vc],     pitchDurRange (36, 72) (0, 1),     const 0.0,          toParts [vc]  . lineOrch pizz, [])
+    , ([db],     pitchDurRange (28, 52) (0, 1),     const 0.0,          toParts [db]  . lineOrch pizz, [])    
+    , ([vl1],    pitchDurRange (79, 99) (0, 1),     const 0.0,          toParts [vl1] . (artHarm . lineOrch melody), [])
+    , ([vl2],    pitchDurRange (79, 99) (0, 1),     const 0.0,          toParts [vl2] . (artHarm . lineOrch melody), [])
+    , ([vla],    pitchDurRange (72, 90) (0, 1),     const 0.0,          toParts [vla] . (artHarm . lineOrch melody), [])
+    , ([vc],     pitchDurRange (60, 80) (0, 1),     const 0.0,          toParts [vc]  . (artHarm . lineOrch melody), [])
+    , ([db],     pitchDurRange (52, 60) (0, 1),     const 0.0,          toParts [db]  . (artHarm . lineOrch melody), [])
+    , ([vl1],    pitchDurRange (79, 99) (0, 1),     const 0.0,          toParts [vl1] . (artHarm . lineOrch melody), [])
+    , ([vl2],    pitchDurRange (79, 99) (0, 1),     const 0.0,          toParts [vl2] . (artHarm . lineOrch melody), [])
+    , ([vla],    pitchDurRange (72, 90) (0, 1),     const 0.0,          toParts [vla] . (artHarm . lineOrch melody), [])
+    , ([vc],     pitchDurRange (60, 80) (0, 1),     const 0.0,          toParts [vc]  . (artHarm . lineOrch melody), [])
+    , ([db],     pitchDurRange (52, 60) (0, 1),     const 0.0,          toParts [db]  . (artHarm . lineOrch melody), [])
+    , ([vl1],    pitchDurRange (79, 99) (0, 8),     const 0.0,          toParts [vl1] . (artHarm . lineOrch pizz), [])
+    , ([vl2],    pitchDurRange (79, 99) (0, 8),     const 0.0,          toParts [vl2] . (artHarm . lineOrch pizz), [])
+    , ([vla],    pitchDurRange (72, 90) (0, 8),     const 0.0,          toParts [vla] . (artHarm . lineOrch pizz), [])
+    , ([vc],     pitchDurRange (60, 80) (0, 8),     const 0.0,          toParts [vc]  . (artHarm . lineOrch pizz), [])
+    , ([db],     pitchDurRange (52, 60) (0, 8),     const 0.0,          toParts [db]  . (artHarm . lineOrch pizz), [])
+    , ([vl1],    pitchDurRange (55, 91) (0, 1),     const 0.0,          toParts [vl1] . (map (addMark "trem") . lineOrch melody), [])
+    , ([vl2],    pitchDurRange (55, 91) (0, 1),     const 0.0,          toParts [vl2] . (map (addMark "trem") . lineOrch melody), [])
+    , ([vla],    pitchDurRange (48, 84) (0, 1),     const 0.0,          toParts [vla] . (map (addMark "trem") . lineOrch melody), [])
+    , ([vc],     pitchDurRange (36, 72) (0, 1),     const 0.0,          toParts [vc]  . (map (addMark "trem") . lineOrch melody), [])
+    , ([db],     pitchDurRange (28, 52) (0, 1),     const 0.0,          toParts [db]  . (map (addMark "trem") . lineOrch melody), [])
+    , ([vl1],    pitchDurRange (79, 99) (0, 1),     const 0.0,          toParts [vl1] . (artHarm . map (addMark "trem") . lineOrch melody), [])
+    , ([vl2],    pitchDurRange (79, 99) (0, 1),     const 0.0,          toParts [vl2] . (artHarm . map (addMark "trem") . lineOrch melody), [])
+    , ([vla],    pitchDurRange (72, 90) (0, 1),     const 0.0,          toParts [vla] . (artHarm . map (addMark "trem") . lineOrch melody), [])
+    , ([vc],     pitchDurRange (60, 80) (0, 1),     const 0.0,          toParts [vc]  . (artHarm . map (addMark "trem") . lineOrch melody), [])
+    , ([db],     pitchDurRange (52, 60) (0, 1),     const 0.0,          toParts [db]  . (artHarm . map (addMark "trem") . lineOrch melody), [])
 
     
-    , ([fl, ob], pitchRange (62, 88), const 0.0, toParts [fl, ob] . lineOrch melody, []) ]
+    , ([fl, ob], pitchRange (62, 88),               const 0.0,          toParts [fl, ob] . lineOrch melody, []) ]
 
 
 
-; hornShort                 = ([hrn],      (48, 71),  (1, 1),  nil, nil)
-; hornShortStopped          = ([hrn],      (48, 71),  (1, 1),  nil, nil)
-; hornContinuous            = ([hrn],      (48, 71),  (1, 12), nil, nil)
-; hornContinuousStopped     = ([hrn],      (48, 71),  (1, 12), nil, nil)
-; trumpetShort              = ([tpt],      (53, 81),  (1, 1),  nil, nil)
-; trumpetShortMute          = ([tpt],      (53, 81),  (1, 1),  nil, nil)
-; trumpetContinuous         = ([tpt],      (53, 81),  (1, 1),  nil, nil)
-; trumpetContinuousMute     = ([tpt],      (53, 81),  (1, 1),  nil, nil)
-; trumpetContinuousHarmon   = ([tpt],      (53, 81),  (1, 1),  nil, nil)
-; tromboneShort             = ([tbn],      (40, 69),  (1, 1),  nil, nil)
-; tromboneShortMute         = ([tbn],      (40, 69),  (1, 1),  nil, nil)
-; tromboneContinuous        = ([tbn],      (40, 69),  (1, 1),  nil, nil)
-; tromboneContinuousMute    = ([tbn],      (40, 69),  (1, 1),  nil, nil)
-; tromboneContinuousHarmon  = ([tbn],      (40, 69),  (1, 1),  nil, nil)
-;
 ; pianoPizz                 = ([pno],      (21, 108), (1, 1),  nil, nil)
 ; pianoShort                = ([pno],      (21, 108), (1, 1),  nil, nil)
 ; pianoResonant             = ([pno],      (21, 108), (1, 1),  nil, nil)
@@ -923,35 +928,6 @@ orchestrations : [orchestration] =
 ; largeCymbalResonant       = ([prc],      (),        (1, 1),  nil, nil)
 ; largeCymbalRoll           = ([prc],      (),        (1, 1),  nil, nil)
 ; woodblockShort            = ([prc],      (),        (1, 1),  nil, nil)
-;
-; violinBartokPizz          = ([vl1, vl2], (55, 91), (1, 1), nil, nil)
-; violinPizz                = ([vl1, vl2], (55, 91), (1, 1), nil, nil)
-; violinPizzHarm            = ([vl1, vl2], (55, 91), (1, 1), nil, nil)
-; violinColLegnoBat         = ([vl1, vl2], (55, 91), (1, 1), nil, nil)
-; violinContinous           = ([vl1, vl2], (55, 91), (1, 1), nil, nil)
-; violinContinousTrem       = ([vl1, vl2], (55, 91), (1, 1), nil, nil)
-; violinContinousHarm       = ([vl1, vl2], (55, 91), (1, 1), nil, nil)
-; violaBartokPizz           = ([vla],      (55, 91), (1, 1), nil, nil)
-; violaPizz                 = ([vla],      (48, 84), (1, 1), nil, nil)
-; violaPizzHarm             = ([vla],      (48, 84), (1, 1), nil, nil)
-; violaColLegnoBat          = ([vla],      (48, 84), (1, 1), nil, nil)
-; violaContinous            = ([vla],      (48, 84), (1, 1), nil, nil)
-; violaContinousTrem        = ([vla],      (48, 84), (1, 1), nil, nil)
-; violaContinousHarm        = ([vla],      (48, 84), (1, 1), nil, nil)
-; celloBartokPizz           = ([vc],       (36, 72), (1, 1), nil, nil)
-; celloPizz                 = ([vc],       (36, 72), (1, 1), nil, nil)
-; celloPizzHarm             = ([vc],       (36, 72), (1, 1), nil, nil)
-; celloColLegnoBat          = ([vc],       (36, 72), (1, 1), nil, nil)
-; celloContinous            = ([vc],       (36, 72), (1, 1), nil, nil)
-; celloContinousTrem        = ([vc],       (36, 72), (1, 1), nil, nil)
-; celloContinousHarm        = ([vc],       (36, 72), (1, 1), nil, nil)
-; bassBartokPizz            = ([db],       (28, 52), (1, 1), nil, nil)
-; bassPizz                  = ([db],       (28, 52), (1, 1), nil, nil)
-; bassPizzHarm              = ([db],       (28, 52), (1, 1), nil, nil)
-; bassColLegnoBat           = ([db],       (28, 52), (1, 1), nil, nil)
-; bassContinous             = ([db],       (28, 52), (1, 1), nil, nil)
-; bassContinousTrem         = ([db],       (28, 52), (1, 1), nil, nil)
-; bassContinousHarm         = ([db],       (28, 52), (1, 1), nil, nil)
 
 
 
