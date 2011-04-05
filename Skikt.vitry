@@ -471,10 +471,14 @@ major root  = [root, root + 4, root + 7]
 
 
 ; Ranges
+; An inclusive range (interval)
 
 range a = (a, a)
 
-; range -> range | ()
+; range a -> [a]
+enumerate (a, b) = (a .. succ b)
+
+; range a -> range a | ()
 overlap (a, b) (c, d) =
     if  (a > b || c > d) then nil else
         let x = max a c
@@ -482,11 +486,10 @@ overlap (a, b) (c, d) =
             if  (x > y) then nil else (x, y)
 
 ; a -> range a -> bool
-isInRange (a, b) x = a <= x && x <= b
-isOverlapping = (!= ()) .' overlap
+inRange    (a, b) x      = a <= x && x <= b
+isSubRange (a, b) (c, d) = c <= a && b <= d
+isOverlapping            = (!= ()) .' overlap
 
-; range prec -> prec
-randomRange (rangeLow, rangeHigh) = random (succ rangeHigh - rangeLow) + rangeLow
 
 
 ; Curves
@@ -497,6 +500,14 @@ sinG   = map (sin . (* 2.0 * pi))
 cosG   = map (cos . (* 2.0 * pi))
 addG   = zipWith (+)
 mulG   = zipWith (*)
+
+; Musical structures
+
+modeFrom xs range = fn (i) 
+    index (i % length xs) xs + floor (i / length xs) * range
+
+diatonic = modeFrom [0, 2, 4, 5, 7, 9, 11] 12
+
 
 
 ; Returns a list of length n approximating the values of the given
@@ -604,6 +615,9 @@ export text = do
 ;     means that the orchestration is more likely to be chosen.
 ;   - The orchestrator performs the orchestration.
 
+; A frame can be anything that implements the following function 
+; getFrameDur : frame -> dur
+
 ; FIXME we can not represent function types yet
 ; predicate    : frame -> boolean
 ; weighter     : frame -> double
@@ -695,7 +709,7 @@ info   : [setting] = [ ("title",  "Skikt")
 
 header : [mark]    = [ ("tempo", "*1/4* = #", 90) ]
 insts  : [inst]    = [ ("perc1", "percussion", [ "snare-drum", "bass-drum"
-                                              , "crash-cymbal", "splash-cymbal" ]) ]
+                                               , "crash-cymbal", "splash-cymbal" ]) ]
 
 fl   : part = ("fl",   "flute",          [ ("abbr", "Fl.") ])
 ob   : part = ("ob",   "oboe",           [ ("abbr", "Ob.") ])
@@ -723,6 +737,8 @@ percNote inst = match inst
     x : `smallCymbal = 76
     x : `largeCymbal = 79
 
+
+
 curve1 = (sigToPos . take 70 . map (* 1.2) . sinG . mulG (line 470) . cosG) (line 70)
 curve2 = (sigToPos . map negate . posToSig) curve1
 curve3 = reverse curve1
@@ -736,61 +752,37 @@ curve9 = (sigToPos . take 70 . sinG . addG (map (* 0.1) ((sinG . sinG) (line 60)
 
 
 
-
-
 dynamic    = double
+density    = double
 saturation = double
 resonance  = double
 
-frame = (dur, range pitch, range dur, dynamic, saturation, resonance)
+frame = (dur, range pitch, range dur, dynamic, density, saturation, resonance)
 layer = [frame]
 
 getFrameDur        (d, _,  _,  _, _, _) = d
 getFramePitchRange (_, pr, _,  _, _, _) = pr
 getFrameDurRange   (_, _,  dr, _, _, _) = dr
 getFrameDynamic    (_, _,  _,  n, _, _) = n
+getFrameDensity    (_, _,  _,  n, _, _) = n
 getFrameSaturation (_, _,  _,  _, s, _) = s
 getFrameResonance  (_, _,  _,  _, _, e) = e
 
+
 short = take 60
-    zip6
-        map (+ 1) (rands 5)
+    zip7
+        map ((* 3) . (+ 1)) (rands 5)
         loop (65, 67)
         loop (1/2, 1/2)
 
-        line 70
-        line 70
+        curve1
+        curve1
+        curve1
         loop 0.1
 
-resonant = []
-; resonant = take 70
-;     zip6
-;         loop 5
-;         loop (55, 57)
-;         loop (1/2, 1/2)
-;
-;         curve1
-;         loop 0.1
-;         loop 0.1
-
-long = take 60
-    let durs = map ((* 2) . (+ 1)) (rands 4)
-        zip6
-            durs
-            zip (loop 60) (map ((+ 62) . (* 7) . rationalize) curve1)
-            zip durs durs
-
-            curve1
-            curve1
-            loop 0.0
-
-layers = [short, resonant, long]
+layers = [short]
 
 
-
-
-durRange   r = isOverlapping r . getFrameDurRange
-pitchRange r = isOverlapping r . getFramePitchRange
 
 stdWeight   f (_, _,  _,  n, s, e) = (f n s e)
 stdOrch   r ir f (d, pr, dr, n, s, e) =
@@ -800,65 +792,6 @@ stdOrch   r ir f (d, pr, dr, n, s, e) =
         map (f . setVoice [1, 2] . setPart r . setDyn n) (melody [randomRange dr] [pitch])
 
 
-flutePizz                 = ( [fl], allPred [pitchRange (60, 93), durRange (0, 1 )]
-                            , stdWeight (fn (dyn sat res)  sat )
-                            , stdOrch fl (60, 93) (setMarks ["pizz"])
-                            , [] )
-
-fluteToungeRam            = ( [fl], allPred [pitchRange (60, 71), durRange (0, 1 )]
-                            , stdWeight (fn (dyn sat res)  sat )
-                            , stdOrch fl (60, 71) (setMarks [("x", "t-r.")])
-                            , [] )
-
-fluteShort                = ( [fl], allPred [pitchRange (60, 93), durRange (0, 1 )]
-                            , (const 0.5)
-                            , stdOrch fl (60, 93) (setMarks ["."])
-                            , [] )
-
-fluteContinuous           = ( [fl], allPred [pitchRange (60, 93), durRange (0, 12)]
-                            , (const 0.5)
-                            , stdOrch fl (60, 93) id
-                            , [] )
-
-fluteContinuousFlz        = ( [fl], allPred [pitchRange (60, 93), durRange (0, 12)]
-                            , stdWeight (fn (dyn sat res)  sat )
-                            , stdOrch fl (60, 93) (setMarks ["trem"])
-                            , [] )
-
-oboeShort                 = ( [ob], allPred [pitchRange (62, 88), durRange (0, 1 )]
-                            , (const 0.5)
-                            , stdOrch ob (62, 88) (setMarks ["."])
-                            , [] )
-
-flPlusOboe                = ( [fl, ob], allPred [pitchRange (62, 88), durRange (0, 12)]
-                            , (const 0.9)
-                            , (fn (f) (stdOrch fl (62, 88) id f) ++ (stdOrch ob (62, 88) id f))
-                            , [(`padding, 2)] )
-
-oboeContinuous            = ( [ob], allPred [pitchRange (62, 88), durRange (0, 12)]
-                            , (const 0.5)
-                            , stdOrch ob (62, 88) id
-                            , [(`padding, 2)] )
-
-clarinetShort             = ( [cl], allPred [pitchRange (50, 86), durRange (0, 1 )]
-                            , (const 0.5)
-                            , stdOrch cl (50, 86) (setMarks ["."])
-                            , [] )
-
-clarinetContinuous        = ( [cl], allPred [pitchRange (50, 86), durRange (0, 12)]
-                            , (const 0.5)
-                            , stdOrch cl (50, 86) id
-                            , [] )
-
-bassoonShort              = ( [bsn], allPred [pitchRange (34, 67), durRange (0, 1 )]
-                            , (const 0.5)
-                            , stdOrch bsn (34, 67) (setMarks ["."])
-                            , [] )
-
-bassoonContinuous         = ( [bsn], allPred [pitchRange (34, 67), durRange (0, 12)]
-                            , (const 0.5)
-                            , stdOrch bsn (34, 67) id
-                            , [] )
 
 ; hornShort                 = ([hrn],      (48, 71),  (1, 1),  nil, nil)
 ; hornShortStopped          = ([hrn],      (48, 71),  (1, 1),  nil, nil)
@@ -919,30 +852,6 @@ bassoonContinuous         = ( [bsn], allPred [pitchRange (34, 67), durRange (0, 
 ; bassContinous             = ([db],       (28, 52), (1, 1), nil, nil)
 ; bassContinousTrem         = ([db],       (28, 52), (1, 1), nil, nil)
 ; bassContinousHarm         = ([db],       (28, 52), (1, 1), nil, nil)
-;
-orchestrations   = [ flutePizz, fluteToungeRam, fluteShort, fluteContinuous, fluteContinuousFlz
-                   , flPlusOboe
-                   , oboeShort, oboeContinuous, clarinetShort, clarinetContinuous
-                   ; , clarinetContinuousFlz
-                   ; , bassClarinetShort, bassClarinetContinuous, bassClarinetContinuousFlz
-                   , bassoonShort, bassoonContinuous ]
-;
-;                    , hornShort, hornShortStopped, hornContinuous, hornContinuousStopped, trumpetShort
-;                    , trumpetShortMute, trumpetContinuous, trumpetContinuousMute, trumpetContinuousHarmon
-;                    , tromboneShort, tromboneShortMute, tromboneContinuous, tromboneContinuousMute, tromboneContinuousHarmon
-;
-;                    , pianoPizz, pianoShort, pianoResonant, crotalesShort, crotalesResonant
-;                    , vibraphoneShort, vibraphoneResonant
-;
-;                    , bassDrumResonant, bassDrumRoll, snareDrumResonant, snareDrumRoll
-;                    , largeCymbalResonant, largeCymbalRoll, woodblockShort
-;
-;                    , violinBartokPizz, violinPizz, violinPizzHarm, violinColLegnoBat
-;                    , violinContinous, violinContinousTrem, violinContinousHarm, violaBartokPizz, violaPizz
-;                    , violaPizzHarm, violaColLegnoBat, violaContinous, violaContinousTrem, violaContinousHarm
-;                    , celloBartokPizz, celloPizz, celloPizzHarm, celloColLegnoBat, celloContinous, celloContinousTrem
-;                    , celloContinousHarm, bassBartokPizz, bassPizz, bassPizzHarm, bassColLegnoBat, bassContinous
-;                    , bassContinousTrem, bassContinousHarm ]
 
 
 
