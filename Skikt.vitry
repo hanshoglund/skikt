@@ -14,7 +14,8 @@ fileName         = "out"
 preview          = false
 fixClefs         = false
 verbose          = `output
-nonDeterministic = `orchestration
+nonDeterministic = nil
+                 & `orchestration
 
 ; =============================================================================
 ; FOMUS
@@ -800,7 +801,7 @@ short = take 60
     zip7
         map ((* 3) . (+ 1)) (rands 5)
         loop [(1/2)]
-        loop [65]
+        map single $ cycle (50 .. 80)
         curve1
         curve1
         curve1
@@ -809,12 +810,22 @@ short = take 60
 layers : [layer] = [short]
 
 
-
+; range -> frame -> bool
+durRange   r = all (inRange r) . getFrameDurs
+pitchRange r = all (inRange r) . getFramePitches
 
 melodyOrchestration (d, ds, ps, n, t, s, r) = melody ds ps
 
+; [part] -> music -> music
+toParts parts : [part] music : music = concat $ map (fn (p) mapMusic (setPart p) music) parts
+
+
 orchestrations : [orchestration] = 
-    [ ([fl], const true, const 0.0, mapMusic (setPart fl) . melodyOrchestration, []) ]
+    [ ([fl],     pitchRange (60, 93), const 0.0, toParts [fl]     . melodyOrchestration, [])
+    , ([ob],     pitchRange (62, 88), const 0.0, toParts [ob]     . melodyOrchestration, [])
+    , ([cl],     pitchRange (50, 86), const 0.0, toParts [cl]     . melodyOrchestration, [])
+    , ([bsn],    pitchRange (34, 67), const 0.0, toParts [bsn]    . melodyOrchestration, [])
+    , ([fl, ob], pitchRange (62, 88), const 0.0, toParts [fl, ob] . melodyOrchestration, []) ]
 
 
 
