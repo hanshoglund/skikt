@@ -274,6 +274,11 @@ chordsT time1 time2 durs pitches = match (durs, pitches)
     _ : [], _        = []
     _,      _ : []   = []
     (d, ds), (p, ps) = (delay chordT time1 d p ++ chordsT time2 time2 ds ps)
+chordsI time1 time2 durs pitches interl = match (durs, pitches, interl)
+    _ : [], _,      _         = []
+    _,      _ : [], _         = []
+    _,      _,      _ : []    = []
+    (d, ds), (p, ps), (i, is) = (delay chordT time1 d p ++ [i] ++ chordsI time2 time2 ds ps is)
 
 ; dur -> [pitch] -> [note]
 chord = chordT 0
@@ -320,18 +325,38 @@ chordsArpDown        = chordsPhrase ["arp_"] ["arp_"] ["arp_"]
 restMelody durs restDurs pitches =
     interl (melody durs pitches) (rests (loop "+") restDurs)
 
-; [dur] -> [dur] -> [[pitch]] -> [note]
-restChords durs restDurs pitches =
-    interl (chords durs pitches) (rests (loop "+") restDurs)
-
 ; [mark] -> [mark] -> [mark] -> [dur] -> [dur] -> [pitch] -> [event]
 restPhrase attack sustain release durs restDurs pitches =
     interl (phrase attack sustain release durs pitches) (rests (loop "+") restDurs)
 
-; FIXME
+; ; [dur] -> [dur] -> [[pitch]] -> [note]
+restChords durs restDurs pitches =
+    chordsI 0 "+" durs pitches (rests (loop "+") restDurs)
+
 ; [mark] -> [mark] -> [mark] -> [dur] -> [dur] -> [[pitch]]
-; restChordsPhrase attack sustain release durs restDurs pitches  =
-    ; interl (chordsPhrase attack sustain release durs pitches) (rests (loop "+") restDurs)
+restChordsPhrase attack sustain release = phraseNotes attack sustain release .'' restChords
+
+; [dur] -> [dur] -> [pitch] -> [event]
+restLegato               = restPhrase ["(.."] [".(."] ["..)"]
+restDashedLegato         = restPhrase ["dash(.."] [".dash(."] ["..dash)"]
+restDottedLegato         = restPhrase ["dot(.."] [".dot(."] ["..dot)"]
+restStaccato             = restPhrase ["."] ["."] ["."]
+restTenuto               = restPhrase ["-"] ["-"] ["-"]
+restPortato              = restPhrase ["(..", "."] [".(.", "."] ["..)", "."]
+restMoltoPortato         = restPhrase ["-", "."] ["-", "."] ["-", "."]
+restChordsLegato         = restChordsPhrase ["(.."] [] ["..)"]
+restChordsDashedLegato   = restChordsPhrase ["dash(.."] [] ["..dash)"]
+restChordsDottedLegato   = restChordsPhrase ["dot(.."] [] ["..dot)"]
+restChordsStaccato       = restChordsPhrase ["."] ["."] ["."]
+restChordsTenuto         = restChordsPhrase ["-"] ["-"] ["-"]
+restChordsPortato        = restChordsPhrase ["(..", "."] ["."] ["..)", "."]
+restChordsMoltoPortato   = restChordsPhrase ["-", "."] ["-", "."] ["-", "."]
+restChordArp             = restChordsPhrase ["arp"]
+restChordArpUp           = restChordsPhrase ["arp^"]
+restChordArpDown         = restChordsPhrase ["arp_"]
+restChordsArp            = restChordsPhrase ["arp"] ["arp"] ["arp"]
+restChordsArpUp          = restChordsPhrase ["arp^"] ["arp^"] ["arp^"]
+restChordsArpDown        = restChordsPhrase ["arp_"] ["arp_"] ["arp_"]
 
 
 
@@ -866,8 +891,10 @@ events = ref []
 ;             prepend (withMarks (++ header) x) xs
 ;             prepend x xs
 
-main _        = (export . fomus) (get events, decls, info)
-test _        = fomus (get events, decls, info)
-dump _        = join "\n" (get events)
-
-
+main _         = (export . fomus) (get events, decls, info)
+test _         = fomus (get events, decls, info)
+main2 music   = do  set (mapMusic (setPart fl) music) events
+                     main ()
+test2 music   = do  set (mapMusic (setPart fl) music) events
+                     test ()
+dump _         = join "\n" (get events)
