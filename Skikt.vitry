@@ -783,6 +783,8 @@ toPartVoice part voice   = toVoice voice . toPart part
 ; [part] -> [voice] -> music -> music
 toPartsVoice parts voice = toVoice voice . toParts parts
 
+weightNone = const 0.5
+
 ; =============================================================================
 ; Main data
 
@@ -875,7 +877,7 @@ resonant1 = take 20
         loop 0.3
         loop 0.0
         loop 0.0
-        loop 0.9
+        loop 5.0
         
 resonant2 = take 20
     zip7
@@ -886,7 +888,7 @@ resonant2 = take 20
         loop 0.3
         loop 0.0
         loop 0.0
-        loop 0.9
+        loop 5.0
 
 layers : [layer] = [resonant1, resonant2]
 
@@ -896,73 +898,73 @@ layers : [layer] = [resonant1, resonant2]
 orchestrations : [orchestration] = 
     [ ( [fl]
        , pitchRange (60, 93)
-       , const 0.5
+       , weightNone
        , toParts [fl]  . lineOrch melody, [] )
     , ( [ob]
         , pitchRange (62, 88)
-        , const 0.5
+        , weightNone
         , toParts [ob]  . lineOrch melody, [] )
     , ( [cl]
         , pitchRange (50, 86)
-        , const 0.5
+        , weightNone
         , toParts [cl]  . lineOrch melody, [] )
     , ( [bsn]
         , pitchRange (34, 58)
-        , const 0.5
+        , weightNone
         , toParts [bsn] . lineOrch melody, [] ) 
     , ( [fl]
         , pitchDurRange (60, 93) (0, 1)
-        , const 0.5
+        , weightNone
         , toParts [fl]  . lineOrch staccato, [] )
     , ( [ob]
         , pitchDurRange (62, 88) (0, 1)
-        , const 0.5
+        , weightNone
         , toParts [ob]  . lineOrch staccato, [] )
     , ( [cl]
         , pitchDurRange (50, 86) (0, 1)
-        , const 0.5
+        , weightNone
         , toParts [cl]  . lineOrch staccato, [] )
     , ( [bsn], pitchDurRange (34, 58) (0, 1)
-        , const 0.5
+        , weightNone
         , toParts [bsn] . lineOrch staccato, [] )
                                                                                                     
     
     
     , ( [hrn]
         , pitchRange (48, 71)
-        , const 0.5
+        , weightNone
         , toParts [hrn] . lineOrch melody, [] )
     , ( [tpt]
         , pitchRange (53, 81)
-        , const 0.5
+        , weightNone
         , toParts [tpt] . lineOrch melody, [] )
     , ( [tbn]
         , pitchRange (40, 58)
-        , const 0.5
+        , weightNone
         , toParts [tbn] . lineOrch melody, [] )
     , ( [hrn]
         , pitchDurRange (48, 71) (0, 1)
-        , const 0.5
+        , weightNone
         , toParts [hrn] . lineOrch staccato, [] )
     , ( [tpt]
         , pitchDurRange (53, 81) (0, 1)
-        , const 0.5
+        , weightNone
         , toParts [tpt] . lineOrch staccato, [] )
     , ( [tbn]
         , pitchDurRange (40, 69) (0, 1)
-        , const 0.5
+        , weightNone
         , toParts [tbn] . lineOrch staccato, [] )
     , ( [hrn]
         , pitchRange (48, 71)
-        , weightSat (* 1.2)
+        , weightSat (* 0.7)
         , toParts [hrn] . (map (addMark "mute") . lineOrch melody), [] )
     , ( [tpt]
         , pitchRange (53, 81)
-        , weightSat (* 1.2)
+        , weightSat (* 0.7)
         , toParts [tpt] . (map (addMark "mute") . lineOrch melody), [] )
     , ( [tbn]
         , pitchRange (40, 58)
-        , weightSat (* 1.2)
+        , weightSat (* 0.7)
         , toParts [tbn] . (map (addMark "mute") . lineOrch melody), [] )
                                                                                                     
     
@@ -1036,76 +1038,76 @@ orchestrations : [orchestration] =
     
     , ( [vl1]
         , pitchRange (55, 91)
-        , const 0.5
+        , weightNone
         , toParts [vl1] . lineOrch melody, [] )
     , ( [vl2]
         , pitchRange (55, 91)
-        , const 0.5
+        , weightNone
         , toParts [vl2] . lineOrch melody, [] )
     , ( [vla]
         , pitchRange (48, 84)
-        , const 0.5
+        , weightNone
         , toParts [vla] . lineOrch melody, [] )
     , ( [vc]
         , pitchRange (36, 72)
-        , const 0.5
+        , weightNone
         , toParts [vc]  . lineOrch melody, [] )
     , ( [db]
         , pitchRange (28, 52)
-        , const 0.5
+        , weightNone
         , toParts [db]  . lineOrch melody, [] )
     
     , ( [vl1]
         , pitchRange (55, 91)
-        , const 0.5
+        , weightNone
         , toParts [vl1] . lineOrch tenuto, [] )
     , ( [vl2]
         , pitchRange (55, 91)
-        , const 0.5
+        , weightNone
         , toParts [vl2] . lineOrch tenuto, [] )
     , ( [vla]
         , pitchRange (48, 84)
-        , const 0.5
+        , weightNone
         , toParts [vla] . lineOrch tenuto, [] )
     , ( [vc]
         , pitchRange (36, 72)
-        , const 0.5
+        , weightNone
         , toParts [vc]  . lineOrch tenuto, [] )
     , ( [db]
         , pitchRange (28, 52)
-        , const 0.5
+        , weightNone
         , toParts [db]  . lineOrch tenuto, [] )
     
     , ( [vl1], pitchDurRange (55, 91) (0, 2)
-        , const 0.5
+        , weightNone
         , toParts [vl1] . lineOrch staccato, [] )
     , ( [vl2], pitchDurRange (55, 91) (0, 2)
-        , const 0.5
+        , weightNone
         , toParts [vl2] . lineOrch staccato, [] )
     , ( [vla], pitchDurRange (48, 84) (0, 2)
-        , const 0.5
+        , weightNone
         , toParts [vla] . lineOrch staccato, [] )
     , ( [vc], pitchDurRange (36, 72) (0, 2)
-        , const 0.5
+        , weightNone
         , toParts [vc]  . lineOrch staccato, [] )
     , ( [db], pitchDurRange (28, 52) (0, 2)
-        , const 0.5
+        , weightNone
         , toParts [db]  . lineOrch staccato, [] )
     
     , ( [vl1], pitchDurRange (55, 91) (0, 1)
-        , const 0.5
+        , weightNone
         , toParts [vl1] . lineOrch pizz, [] )
     , ( [vl2], pitchDurRange (55, 91) (0, 1)
-        , const 0.5
+        , weightNone
         , toParts [vl2] . lineOrch pizz, [] )
     , ( [vla], pitchDurRange (48, 84) (0, 1)
-        , const 0.5
+        , weightNone
         , toParts [vla] . lineOrch pizz, [] )
     , ( [vc], pitchDurRange (36, 72) (0, 1)
-        , const 0.5
+        , weightNone
         , toParts [vc]  . lineOrch pizz, [] )
     , ( [db], pitchDurRange (28, 52) (0, 1)
-        , const 0.5
+        , weightNone
         , toParts [db]  . lineOrch pizz, [] )    
     
     , ( [vl1]
@@ -1215,7 +1217,7 @@ orchestrations : [orchestration] =
                                                                                                             
     , ( [fl, ob]
         , pitchRange (62, 88)
-        , const 0.5
+        , weightNone
         , toParts [fl, ob] . lineOrch melody, [] ) ]
 
 
