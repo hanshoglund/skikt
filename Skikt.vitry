@@ -537,13 +537,18 @@ addG   = zipWith (+)
 mulG   = zipWith (*)
 
 
-sample n = map head . partitionInto n
 
-; Returns a list of length n approximating the values of the given
-; list by partitioning it and calculating the mean of each sublist.
+; Returns a list of length n approximating the values of the given list.
 ; Returns the original list if its length is >= n
 ;   int -> [prec] -> [prec] | [real] -> [real]
-sampleMean n = map mean . partitionInto n
+sample n     = map head . partitionInto n
+sampleMean n = map mean . partitionInto n  
+
+
+; Returns a list of length n by interpolating
+; Returns the original list if its length is < n
+; interpolate n = 
+
 
 ;   int -> [prec] -> [prec] | [real] -> [real]
 ; interpolate n =
@@ -820,15 +825,15 @@ percNote inst = match inst
 
 
 
-curve1 = (sigToPos . take 70 . map (* 1.2) . sinG . mulG (line 470) . cosG) (line 70)
+curve1 = (sigToPos . take 700 . map (* 1.2) . sinG . mulG (line 4700) . cosG) (line 700)
 curve2 = (sigToPos . map negate . posToSig) curve1
 curve3 = reverse curve1
-curve4 = (sigToPos . take 70 . sinG . mulG (line 470) . cosG) (line 30)
-curve5 = (sigToPos . take 70 . sinG . addG (map (* 0.1) (sinG (line 30)))) (line 180)
-curve6 = (sigToPos . take 70 . sinG . (map (+ 0.11))) (line 180)
-curve7 = (sigToPos . take 70 . sinG . (map (+ 0.3))) (line 100)
-curve8 = (sigToPos . take 70 . sinG . (map (+ 0.7))) (line 100)
-curve9 = (sigToPos . take 70 . sinG . addG (map (* 0.1) ((sinG . sinG) (line 60)))) (line 60)
+curve4 = (sigToPos . take 700 . sinG . mulG (line 4700) . cosG) (line 300)
+curve5 = (sigToPos . take 700 . sinG . addG (map (* 0.1) (sinG (line 300)))) (line 1800)
+curve6 = (sigToPos . take 700 . sinG . (map (+ 0.11))) (line 1800)
+curve7 = (sigToPos . take 700 . sinG . (map (+ 0.3))) (line 1000)
+curve8 = (sigToPos . take 700 . sinG . (map (+ 0.7))) (line 1000)
+curve9 = (sigToPos . take 700 . sinG . addG (map (* 0.1) ((sinG . sinG) (line 600)))) (line 600)
 
 
 
