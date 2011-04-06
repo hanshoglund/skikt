@@ -545,11 +545,14 @@ cosG   = map (cos . (* 2.0 * pi))
 addG   = zipWith (+)
 mulG   = zipWith (*)
 
+
+sample n = map head . partitionInto n
+
 ; Returns a list of length n approximating the values of the given
 ; list by partitioning it and calculating the mean of each sublist.
 ; Returns the original list if its length is >= n
 ;   int -> [prec] -> [prec] | [real] -> [real]
-sample n = map mean . partitionInto n
+sampleMean n = map mean . partitionInto n
 
 ;   int -> [prec] -> [prec] | [real] -> [real]
 ; interpolate n =
@@ -735,9 +738,9 @@ somePartBusy usage       = any (elementOf (concat (map getUsagePart usage))) . g
 maximumWeight            = if (matches `orchestration nonDeterministic) then anyMaximumIndex else maximumIndex
 warnNoOrchs _            = do  print "warning: no orchestration"
                                nil
-printOrchs orchs weights i = do  print ("  orchs  : " ++ string (map (map getName) (map getParts orchs)))
-                                 print ("  weights: " ++ string weights)
-                                 print ("  chosen: "  ++ string i)
+printOrchs orchs weights i = do  names = map (map getName) (map getParts orchs)
+                                 print $ "orchs  :\n    " ++ (join "\n    " $ zip names (map (truncate 3) weights))
+                                 ; print $ "  chosen: "  ++ string $ index i
 
 
 ; range -> frame -> bool
@@ -762,15 +765,23 @@ percOrch     id (d, _,  _,  n, _, _, _) = mapMusic (setDyn n) $ notes [0] [d] [p
 artHarm music = map (addMark "artharm-sounding") music
              ++ map (withPitch (+ (-19)) . addMark "artharm-touched") music
              ++ map (withPitch (+ (-24)) . addMark "artharm-base"   ) music            
-; [part] -> music -> music
-toParts parts : [part] music : music = concat $ map (fn (p) mapMusic (setPart p) music) parts
 
+toPart  part  = mapMusic (setPart part)
+toVoice voice = mapMusic (setVoice voice)
+
+; [part] -> music -> music
+toParts parts music      = concat $ map (fn (p) toPart p music) parts
+; part -> [voice] -> music -> music
+toPartVoice part voice   = toVoice voice . toPart part
+; [part] -> [voice] -> music -> music
+toPartsVoice parts voice = toVoice voice . toParts parts
 
 ; =============================================================================
 ; Main data
 
-info   : [setting] = [ ("title",  "Skikt")
-                     , ("author", "Hans Hoglund 2011") ]
+info   : [setting] = [ ("title",  "Skikt")            
+                     , ("author", "Hans Hoglund 2011")
+                     , ("clip",   [0, 0]) ]
 
 header : [mark]    = [ ("tempo", "*1/4* = #", 90) ]
 insts  : [inst]    = [ ("perc1", "percussion", [ "snare-drum", "bass-drum"
@@ -784,6 +795,7 @@ hrn  : part = ("hrn",  "horn",           [ ("abbr", "Hrn."), ("name", "Horn in F
 tpt  : part = ("tpt",  "bflat-trumpet",  [ ("abbr", "Tpt.") ])
 tbn  : part = ("tbn",  "tenor-trombone", [ ("abbr", "Tbn.") ])
 pno  : part = ("pno",  "piano",          [ ("abbr", "Pno.") ])
+pno2 : part = ("pno2", "piano",          [ ("abbr", "Pno. II") ])
 vib  : part = ("vib",  "vibraphone",     [ ("abbr", "Vib.") ])
 crot : part = ("crot", "vibraphone",     [ ("abbr", "Crot."), ("name", "Crotales") ])
 prc  : part = ("perc", "perc1",          [ ("abbr", "Perc."), ("name", "Percussion") ])
@@ -793,7 +805,9 @@ vla  : part = ("vla",  "viola",          [ ("abbr", "Vla.") ])
 vc   : part = ("vc",   "cello",          [ ("abbr", "Vc."), ("name", "Violoncello") ])
 db   : part = ("db",   "bass",           [ ("abbr", "Kb.") ])
 
-parts : [part] = [ fl, ob, cl, bsn, hrn, tpt, tbn, pno, vib, crot, prc, vl1, vl2, vla, vc, db ]
+
+
+parts : [part] = [ fl, ob, cl, bsn, hrn, tpt, tbn, pno, pno2, vib, crot, prc, vl1, vl2, vla, vc, db ]
 decls : [decl] = insts ++ parts
 
 percNote inst = match inst
@@ -845,18 +859,29 @@ short = take 150
         cycle curve3
         loop 0.1
                  
-resonant = take 50
+resonant = take 20
     zip7
         map (+ 1) (rands 12)
-        loop [3, 3, 1 + (1/2)]
+        loop [1]
         cycle [[60, 62], [66, 60], [61, 62], [60, 62], [61, 62]]
         
         cycle curve1
         loop 0.0
         cycle curve2
         loop 0.9
+        
+resonant2 = take 20
+    zip7
+        map (+ 1) $ (rands 12)
+        loop [1]
+        cycle $ map (map (+ 7)) [[60, 62], [66, 60], [61, 62], [60, 62], [61, 62]]
+        
+        cycle curve1
+        loop 0.0
+        cycle curve2
+        loop 0.9
 
-layers : [layer] = [resonant]
+layers : [layer] = [resonant, resonant2]
 
 
 
@@ -894,6 +919,8 @@ orchestrations : [orchestration] =
         , const 0.5
         , toParts [bsn] . lineOrch staccato, [] )
                                                                                                     
+    
+    
     , ( [hrn]
         , pitchRange (48, 71)
         , const 0.5
@@ -931,13 +958,15 @@ orchestrations : [orchestration] =
         , weightSat (* 1.2)
         , toParts [tbn] . (map (addMark "mute") . lineOrch melody), [] )
                                                                                                     
+    
+    
     , ( [prc]
         , durRange (0, 1)
         , weightSat (* 1.0)
         , toParts [prc]  . percOrch `bassDrum, [] )
     , ( [prc]
         , durRange (2, 10)
-        , weightAll (fn (dyn den sat res) (dyn + sat) * 1.0)
+        , weightAll (fn (dyn den sat res) mean [dyn, sat] * 1.0)
         , toParts [prc]  . percOrch `snareDrum, [] )
     , ( [prc]
         , durRange (0, 1)
@@ -953,7 +982,7 @@ orchestrations : [orchestration] =
         , toParts [prc]  . (map (addMark "trem") . percOrch `bassDrum), [] )
     , ( [prc]
         , const true
-        , weightAll (fn (dyn den sat res) (dyn + sat) * 1.0)
+        , weightAll (fn (dyn den sat res) mean [dyn, sat] * 1.0)
         , toParts [prc] . (map (addMark "trem") . percOrch `snareDrum), [] )
     , ( [prc]
         , const true
@@ -964,31 +993,40 @@ orchestrations : [orchestration] =
         , weightSat (* 1.0)
         , toParts [prc]  . (map (addMark "trem") . percOrch `largeCymbal), [] )
                                                                                                     
-    , ( [pno]
-        , pitchRange (21, 108)
-        , weightRes (* 1.0)
-        , toParts [pno]  . harmOrch chords, [] )
-    , ( [crot, vib]
-        , pitchRange (84, 96)
-        , weightRes (* 1.0)
-        , toParts [crot] . harmOrch chords, [] )
-    , ( [crot, vib]
-        , pitchRange (53, 89)
-        , weightRes (* 1.0)
-        , toParts [vib]  . harmOrch chords, [] )
+    
+    
+    ; , ( [pno]
+    ;     , pitchRange (21, 108)
+    ;     , weightRes (* 1.0)
+    ;     , toPartsVoice [pno] (1 .. 4)  . harmOrch chords, [] )
+    ; , ( [crot, vib]
+    ;     , pitchRange (84, 96)
+    ;     , weightRes (* 1.0)
+    ;     , toPartsVoice [crot] (1 .. 4) . harmOrch chords, [] )
+    ; , ( [crot, vib]
+    ;     , pitchRange (53, 89)
+    ;     , weightRes (* 1.0)
+    ;     , toPartsVoice [vib] (1 .. 4)  . harmOrch chords, [] )
     , ( [pno]
         , pitchRange (21, 108)
         , weightRes (* 1.0)
         , toParts [pno]  . longHarmOrch chord, [] )
+    , ( [pno2]
+        , pitchRange (21, 108)
+        , weightRes (* 1.0)
+        , toParts [pno2]  . longHarmOrch chord, [] )
+
     , ( [crot, vib]
         , pitchRange (84, 96)
         , weightRes (* 1.0)
-        , toParts [crot] . longHarmOrch chord, [] )
+        , toPartsVoice [crot] (1 .. 4) . longHarmOrch chord, [] )
     , ( [crot, vib]
         , pitchRange (53, 89)
         , weightRes (* 1.0)
-        , toParts [vib]  . longHarmOrch chord, [] )
+        , toPartsVoice [vib] (1 .. 4)  . longHarmOrch chord, [] )
                                                                                                     
+    
+    
     , ( [vl1]
         , pitchRange (55, 91)
         , const 0.5
@@ -1009,6 +1047,7 @@ orchestrations : [orchestration] =
         , pitchRange (28, 52)
         , const 0.5
         , toParts [db]  . lineOrch melody, [] )
+    
     , ( [vl1]
         , pitchRange (55, 91)
         , const 0.5
@@ -1029,6 +1068,7 @@ orchestrations : [orchestration] =
         , pitchRange (28, 52)
         , const 0.5
         , toParts [db]  . lineOrch tenuto, [] )
+    
     , ( [vl1], pitchDurRange (55, 91) (0, 2)
         , const 0.5
         , toParts [vl1] . lineOrch staccato, [] )
@@ -1044,6 +1084,7 @@ orchestrations : [orchestration] =
     , ( [db], pitchDurRange (28, 52) (0, 2)
         , const 0.5
         , toParts [db]  . lineOrch staccato, [] )
+    
     , ( [vl1], pitchDurRange (55, 91) (0, 1)
         , const 0.5
         , toParts [vl1] . lineOrch pizz, [] )
@@ -1059,6 +1100,7 @@ orchestrations : [orchestration] =
     , ( [db], pitchDurRange (28, 52) (0, 1)
         , const 0.5
         , toParts [db]  . lineOrch pizz, [] )    
+    
     , ( [vl1]
         , pitchDurRange (79, 99) (0, 1)
         , weightSat (* 0.8)
@@ -1079,6 +1121,7 @@ orchestrations : [orchestration] =
         , pitchDurRange (52, 60) (0, 1)
         , weightSat (* 0.6)
         , toParts [db]  . (artHarm . lineOrch melody), [] )
+    
     , ( [vl1]
         , pitchDurRange (79, 99) (0, 1)
         , weightSat (* 0.8)
@@ -1099,6 +1142,7 @@ orchestrations : [orchestration] =
         , pitchDurRange (52, 60) (0, 1)
         , weightSat (* 0.6)
         , toParts [db]  . (artHarm . lineOrch melody), [] )
+    
     , ( [vl1]
         , pitchDurRange (79, 99) (0, 8)
         , weightSat (* 0.8)
@@ -1119,6 +1163,7 @@ orchestrations : [orchestration] =
         , pitchDurRange (52, 60) (0, 8)
         , weightSat (* 0.6)
         , toParts [db]  . (artHarm . lineOrch pizz), [] )
+    
     , ( [vl1]
         , pitchDurRange (55, 91) (0, 1)
         , weightSat (* 0.8)
@@ -1139,6 +1184,7 @@ orchestrations : [orchestration] =
         , pitchDurRange (28, 52) (0, 1)
         , weightSat (* 0.8)
         , toParts [db]  . (map (addMark "trem") . lineOrch melody), [] )
+    
     , ( [vl1]
         , pitchDurRange (79, 99) (0, 1)
         , weightSat (* 0.8)
