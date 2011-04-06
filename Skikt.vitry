@@ -493,15 +493,6 @@ listOrString x = match x (x : [_] = fomusList x) (_ = string x)
 ; =============================================================================
 ; Util
 
-; Misc
-
-fst (a, b)  = a
-snd (a, b)  = b
-
-loopTimes n = take n . loop
-
-major root  = [root, root + 4, root + 7]
-
 
 ; Ranges
 ; An inclusive range (interval)
@@ -563,25 +554,33 @@ posToSig = map (fn (x) x * 2.0 - 1.0)
 
 ; Plotting
 
-plotWindowSize    = (700, 200)
-plotWindowPadding = (0, 23)
+point = (prec, prec)
+
+plotWindowSize    : point = (700, 200)
+plotWindowPadding : point = (0, 23)
 
 ; Displays a simple plot of the given list of numbers in a window
 ; Precise numbers may be of any magnitude
 ; Real numbers are assumed to be in the range -1.0 < x < 1.0
 ;   [prec] | [real] -> ()
 plot ys =
-    let n  = length ys
+    let n  = length ys    
+        xs = map (* (ceil $ fst plotWindowSize / n)) (0 .. n)
         ys = match ys
-            ys : [prec] = map (flip (/) (maximum ys)    . (* (snd plotWindowSize))) ys
-            ys : [real] = map ((* (snd plotWindowSize)) . rationalize . (* 0.5) . (+ 1.0)) ys
-        plotMatrix (map (* (ceil (700 / n))) (0 .. n)) ys
+            ys : [prec] = map ((* snd plotWindowSize) . flip (/) (maximum ys)) ys
+            ys : [real] = map ((* snd plotWindowSize) . rationalize . (* 0.5) . (+ 1.0)) ys
+        drawCurve $ zip xs ys
 
+; Plot floats in range 0.0 < 1.0 instead of -1.0 < x 1.0
+;   [real] -> ()
 plotf = plot . posToSig
 
 window          = ref ()
-
-plotMatrix xs ys =                             
+                                                         
+; Draw a sequence of points 
+; (0, 0) is lower left corner, plotWindowSize is upper right
+;   [point] -> ()
+drawCurve points : [point] =                             
     let FUNCTION_CANVAS = class "vitry.runtime.util.FunctionCanvas"
         COMPONENT       = class "java.awt.Component"
         FRAME           = class "java.awt.Frame"
@@ -590,12 +589,15 @@ plotMatrix xs ys =
         FRAME_SET_SIZE  = method FRAME "setSize" [`int, `int]
         FRAME_SHOW      = method FRAME "show" []
         FRAME_DISPOSE   = method FRAME "dispose" []
+
+        n        = length points
+        (xs, ys) = unzip points
+        zs       = map ((+ snd plotWindowSize) . negate) ys
         
-        zs       = map ((+ (snd plotWindowSize)) . negate) ys
-        n        = min (length xs) (length ys)
-        canvas   = new FUNCTION_CANVAS [paintPlot xs zs n]
+        canvas   = new FUNCTION_CANVAS [paintPlot (take n xs) (take n zs) n]
         oldFrame = get window
         frame    = new FRAME ["Vitry"]
+        
         do  FRAME_ADD frame canvas
             FRAME_SET_SIZE frame
                 INT_PRIM (fst plotWindowSize + fst plotWindowPadding)
@@ -608,8 +610,8 @@ plotMatrix xs ys =
             nil
 
 paintPlot xs ys n g =
-    let GRAPHICS        = class "java.awt.Graphics"
-        DRAW_POLYLINE   = method GRAPHICS "drawPolyline" [class "[I", class "[I", class "int"]
+    let GRAPHICS      = class "java.awt.Graphics"
+        DRAW_POLYLINE = method GRAPHICS "drawPolyline" [class "[I", class "[I", class "int"]
         DRAW_POLYLINE g
             iarray xs
             iarray ys
@@ -850,7 +852,7 @@ getFrameResonance  (_, _,  _,  _, _, _, r) = r
 
 short = take 150
     zip7
-        map (* 1/3) (rands 13)
+        map  (* 1/3) (rands 13)
         loop [(1/2)]                          
         map single $ (cycle (60 .. 67)) 
         
@@ -859,15 +861,15 @@ short = take 150
         cycle curve3
         loop 0.1
                  
-resonant = take 20
+resonant1 = take 20
     zip7
         map (+ 1) (rands 12)
         loop [1]
         cycle [[60, 62], [66, 60], [61, 62], [60, 62], [61, 62]]
         
-        cycle curve1
+        loop 0.3
         loop 0.0
-        cycle curve2
+        loop 0.0
         loop 0.9
         
 resonant2 = take 20
@@ -876,12 +878,12 @@ resonant2 = take 20
         loop [1]
         cycle $ map (map (+ 7)) [[60, 62], [66, 60], [61, 62], [60, 62], [61, 62]]
         
-        cycle curve1
+        loop 0.3
         loop 0.0
-        cycle curve2
+        loop 0.0
         loop 0.9
 
-layers : [layer] = [resonant, resonant2]
+layers : [layer] = [resonant1, resonant2]
 
 
 
@@ -1217,15 +1219,18 @@ orchestrations : [orchestration] =
 
 ; Main program
 
-events = ref (orchestrate layers orchestrations)
+help _      = do  print "Skikt"
+                  print "   use: help (), main (), test ()"
+                  nil
+events      = ref (orchestrate layers orchestrations)
+main _      = (export . fomus) (get events, decls, info)
+test _      = fomus (get events, decls, info)
 
-main _         = (export . fomus) (get events, decls, info)
-test _         = fomus (get events, decls, info)
-
-main2 music   = do  set (mapMusic (setPart fl) music) events
-                    main ()
-test2 music   = do  set (mapMusic (setPart fl) music) events
-                    test ()
-dump x        = match x
+dump x      = match x
     _ : events = join "\n" (get events)
     _          = join "\n" x
+
+main2 music = do  set (mapMusic (setPart fl) music) events
+                  main ()
+test2 music = do  set (mapMusic (setPart fl) music) events
+                  test ()
