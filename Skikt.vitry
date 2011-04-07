@@ -14,7 +14,7 @@ fileName         = "out"
 preview          = false
 fixClefs         = false
 verbose          = `output 
-                 ; & `orchestration
+                 & `orchestration
 nonDeterministic = nil 
                  & `orchestration
 minDynLevel      = 0.0
@@ -893,7 +893,6 @@ curve8 = (sigToPos . take 700 . sinG . (map (+ 0.7))) (line 1000)
 curve9 = (sigToPos . take 700 . sinG . addG (map (* 0.1) ((sinG . sinG) (line 600)))) (line 600)
 
 
-
 short = take 150
     zip7
         map  ((* 1/3) . (+ 1)) (rands 13)
@@ -920,14 +919,25 @@ resonant2 = take 20
     zip7
         map (* 7/3) $ map (+ 1) $ (rands 12)
         loop [1]
-        cycle $ map (map (+ 7)) [[60, 62], [66, 60], [61, 62], [60, 62], [61, 62]]
+        cycle $ map (map (+ 7 + 24)) [[60, 62], [66, 60], [61, 62], [60, 62], [61, 62]]
         
         loop 0.3
         loop 0.0
         loop 0.0
         loop 5.0
 
-layers : [layer] = [short, resonant1, resonant2]
+testLayer = take 10
+    zip7
+        loop 4
+        loop [1/2, 1/2, 1/2, 1/2, 1/2]
+        loop [60, 60, 60, 60, 60]
+
+        map (* 1.0) (line 10)
+        map (* 1.0) (line 10)
+        loop 0.5
+        loop 0.1
+
+layers : [layer] = [testLayer]
 
 
 
@@ -936,74 +946,86 @@ layers : [layer] = [short, resonant1, resonant2]
 orchestrations : [orchestration] = 
 
     [ ( [fl]
-       , pitchRangeMinDyn (60, 93)
-       , weight2 (weightSat (gaussian 0.4 25.0)) (weightDyn (gaussian 0.4 30.0))
-       , toParts [fl]  . lineOrch melody, [] )
+        , pitchRangeMinDyn (60, 93)
+        , weight3 (weightDyn $ gaussian 0.4 40.0) (weightDen $ gaussian 0.5 35.0) (weightSat $ gaussian 0.4 25.0) 
+        , toParts [fl]  . lineOrch melody, [] )
     , ( [ob]
         , pitchRangeMinDyn (62, 88)
-        , weight2 (weightSat (gaussian 0.5 25.0)) (weightDyn (gaussian 0.4 30.0))
+        , weight3 (weightDyn $ gaussian 0.4 40.0) (weightDen $ gaussian 0.5 35.0) (weightSat $ gaussian 0.5 25.0)
         , toParts [ob]  . lineOrch melody, [] )
     , ( [cl]
         , pitchRangeMinDyn (50, 86)
-        , weight2 (weightSat (gaussian 0.45 25.0)) (weightDyn (gaussian 0.4 30.0))
+        , weight3 (weightDyn $ gaussian 0.4 40.0) (weightDen $ gaussian 0.5 35.0) (weightSat $ gaussian 0.45 25.0)
         , toParts [cl]  . lineOrch melody, [] )
     , ( [bsn]
         , pitchRangeMinDyn (34, 58)
-        , weight2 (weightSat (gaussian 0.5 25.0)) (weightDyn (gaussian 0.4 30.0))
-        , toParts [bsn] . lineOrch melody, [] ) 
-    , ( [fl]
+        , weight3 (weightDyn $ gaussian 0.4 40.0) (weightDen $ gaussian 0.5 35.0) (weightSat $ gaussian 0.5 25.0)
+        , toParts [bsn] . lineOrch melody, [] )   
+    , ( [fl]         
         , pitchDurRangeMinDyn (60, 93) (0, 1)
-        , weight2 (weightSat (gaussian 0.4 25.0)) (weightDyn (gaussian 0.4 30.0))
+        , weight3 (weightDyn $ gaussian 0.4 40.0) (weightDen $ gaussian 0.1 35.0) (weightSat $ gaussian 0.4 25.0)
         , toParts [fl]  . lineOrch staccato, [] )
     , ( [ob]
         , pitchDurRangeMinDyn (62, 88) (0, 1)
-        , weight2 (weightSat (gaussian 0.5 25.0)) (weightDyn (gaussian 0.4 30.0))
+        , weight3 (weightDyn $ gaussian 0.4 40.0) (weightDen $ gaussian 0.1 35.0) (weightSat $ gaussian 0.5 25.0)
         , toParts [ob]  . lineOrch staccato, [] )
     , ( [cl]
         , pitchDurRangeMinDyn (50, 86) (0, 1)
-        , weight2 (weightSat (gaussian 0.45 25.0)) (weightDyn (gaussian 0.4 30.0))
+        , weight3 (weightDyn $ gaussian 0.4 40.0) (weightDen $ gaussian 0.1 35.0) (weightSat $ gaussian 0.45 25.0)
         , toParts [cl]  . lineOrch staccato, [] )
     , ( [bsn], pitchDurRangeMinDyn (34, 58) (0, 1)
-        , weight2 (weightSat (gaussian 0.5 25.0)) (weightDyn (gaussian 0.4 30.0))
+        , weight3 (weightDyn $ gaussian 0.4 40.0) (weightDen $ gaussian 0.1 35.0) (weightSat $ gaussian 0.5 25.0)
         , toParts [bsn] . lineOrch staccato, [] )                                                                                        
     
     
     , ( [hrn]
         , pitchRangeMinDyn (48, 71)
-        , weight2 (weightSat (gaussian 0.4 25.0)) (weightDyn (gaussian 0.9 30.0))
+        , weight3 (weightDyn $ gaussian 0.85 30.0) (weightDen $ gaussian 0.5 35.0) (weightSat $ gaussian 0.4 25.0) 
         , toParts [hrn] . lineOrch melody, [] )
     , ( [tpt]
         , pitchRangeMinDyn (53, 81)
-        , weight2 (weightSat (gaussian 0.4 25.0)) (weightDyn (gaussian 0.95 30.0))
+        , weight3 (weightDyn $ gaussian 0.95 30.0) (weightDen $ gaussian 0.5 35.0) (weightSat $ gaussian 0.4 25.0) 
         , toParts [tpt] . lineOrch melody, [] )
     , ( [tbn]
         , pitchRangeMinDyn (40, 58)
-        , weight2 (weightSat (gaussian 0.4 25.0)) (weightDyn (gaussian 0.95 30.0))
+        , weight3 (weightDyn $ gaussian 0.95 30.0) (weightDen $ gaussian 0.5 35.0) (weightSat $ gaussian 0.4 25.0) 
         , toParts [tbn] . lineOrch melody, [] )
-    ; , ( [hrn]
-    ;     , pitchDurRangeMinDyn (48, 71) (0, 1)
-    ;     , weightSat (gaussian 0.3 35.0)
-    ;     , toParts [hrn] . lineOrch staccato, [] )
-    ; , ( [tpt]
-    ;     , pitchDurRangeMinDyn (53, 81) (0, 1)
-    ;     , weightSat (gaussian 0.3 35.0)
-    ;     , toParts [tpt] . lineOrch staccato, [] )
-    ; , ( [tbn]
-    ;     , pitchDurRangeMinDyn (40, 69) (0, 1)
-    ;     , weightSat (gaussian 0.3 35.0)
-    ;     , toParts [tbn] . lineOrch staccato, [] )  
+    , ( [hrn]
+        , pitchDurRangeMinDyn (48, 71) (0, 1)
+        , weight3 (weightDyn $ gaussian 0.85 30.0) (weightDen $ gaussian 0.1 35.0) (weightSat $ gaussian 0.4 25.0) 
+        , toParts [hrn] . lineOrch staccato, [] )
+    , ( [tpt]
+        , pitchDurRangeMinDyn (53, 81) (0, 1)
+        , weight3 (weightDyn $ gaussian 0.95 30.0) (weightDen $ gaussian 0.1 35.0) (weightSat $ gaussian 0.4 25.0) 
+        , toParts [tpt] . lineOrch staccato, [] )
+    , ( [tbn]
+        , pitchDurRangeMinDyn (40, 69) (0, 1)
+        , weight3 (weightDyn $ gaussian 0.95 30.0) (weightDen $ gaussian 0.1 35.0) (weightSat $ gaussian 0.4 25.0) 
+        , toParts [tbn] . lineOrch staccato, [] )  
     , ( [hrn]
         , pitchRangeMinDyn (48, 71)
-        , weightSat (gaussian 0.7 25.0)
+        , weight3 (weightDyn $ gaussian 0.7 30.0) (weightDen $ gaussian 0.5 35.0) (weightSat $ gaussian 0.7 25.0) 
         , toParts [hrn] . (map (addMark "mute") . lineOrch melody), [] )
     , ( [tpt]
         , pitchRangeMinDyn (53, 81)
-        , weightSat (gaussian 0.7 25.0)
+        , weight3 (weightDyn $ gaussian 0.7 30.0) (weightDen $ gaussian 0.5 35.0) (weightSat $ gaussian 0.7 25.0) 
         , toParts [tpt] . (map (addMark "mute") . lineOrch melody), [] )
     , ( [tbn]
         , pitchRangeMinDyn (40, 58)
-        , weightSat (gaussian 0.7 25.0)
+        , weight3 (weightDyn $ gaussian 0.7 30.0) (weightDen $ gaussian 0.1 35.0) (weightSat $ gaussian 0.7 25.0) 
         , toParts [tbn] . (map (addMark "mute") . lineOrch melody), [] )
+    , ( [hrn]
+        , pitchDurRangeMinDyn (48, 71) (0, 1)
+        , weight3 (weightDyn $ gaussian 0.7 30.0) (weightDen $ gaussian 0.1 35.0) (weightSat $ gaussian 0.7 25.0) 
+        , toParts [hrn] . (map (addMark "mute") . lineOrch staccato), [] )
+    , ( [tpt]
+        , pitchDurRangeMinDyn (53, 81) (0, 1)
+        , weight3 (weightDyn $ gaussian 0.7 30.0) (weightDen $ gaussian 0.1 35.0) (weightSat $ gaussian 0.7 25.0) 
+        , toParts [tpt] . (map (addMark "mute") . lineOrch staccato), [] )
+    , ( [tbn]
+        , pitchDurRangeMinDyn (40, 58) (0, 1)
+        , weight3 (weightDyn $ gaussian 0.7 30.0) (weightDen $ gaussian 0.5 35.0) (weightSat $ gaussian 0.7 25.0) 
+        , toParts [tbn] . (map (addMark "mute") . lineOrch staccato), [] )
                                                                                                     
     
     
@@ -1042,18 +1064,6 @@ orchestrations : [orchestration] =
     ;                                                                                                 
     
     
-    ; , ( [pno]
-    ;     , pitchRangeMinDyn (21, 108)
-    ;     , weightRes (* 1.0)
-    ;     , toPartsVoice [pno] (1 .. 4)  . harmOrch chords, [] )
-    ; , ( [crot, vib]
-    ;     , pitchRangeMinDyn (84, 96)
-    ;     , weightRes (* 1.0)
-    ;     , toPartsVoice [crot] (1 .. 4) . harmOrch chords, [] )
-    ; , ( [crot, vib]
-    ;     , pitchRangeMinDyn (53, 89)
-    ;     , weightRes (* 1.0)
-    ;     , toPartsVoice [vib] (1 .. 4)  . harmOrch chords, [] )
     , ( [pno]
         , pitchRangeMinDyn (21, 108)
         , weightRes (* 1.0)
@@ -1147,7 +1157,7 @@ orchestrations : [orchestration] =
     ; , ( [db], pitchDurRangeMinDyn (28, 52) (0, 1)
     ;     , weightNone
     ;     , toParts [db]  . lineOrch pizz, [] )    
-    ; 
+    
     ; , ( [vl1]
     ;     , pitchDurRangeMinDyn (79, 99) (0, 1)
     ;     , weightSat (* 0.8)
@@ -1209,29 +1219,29 @@ orchestrations : [orchestration] =
     ; , ( [db]
     ;     , pitchDurRangeMinDyn (52, 60) (0, 8)
     ;     , weightSat (* 0.6)
-    ;     , toParts [db]  . (artHarm . lineOrch pizz), [] )
-    ; 
+    ;     , toParts [db]  . (artHarm . lineOrch pizz), [] )   
+    
     ; , ( [vl1]
-    ;     , pitchDurRangeMinDyn (55, 91) (0, 1)
+    ;     , pitchDurRangeMinDyn (55, 91) (1, 2^12)
     ;     , weightSat (* 0.8)
     ;     , toParts [vl1] . (map (addMark "trem") . lineOrch melody), [] )
     ; , ( [vl2]
-    ;     , pitchDurRangeMinDyn (55, 91) (0, 1)
+    ;     , pitchDurRangeMinDyn (55, 91) (1, 2^12)
     ;     , weightSat (* 0.8)
     ;     , toParts [vl2] . (map (addMark "trem") . lineOrch melody), [] )
     ; , ( [vla]
-    ;     , pitchDurRangeMinDyn (48, 84) (0, 1)
+    ;     , pitchDurRangeMinDyn (48, 84) (1, 2^12)
     ;     , weightSat (* 0.8)
     ;     , toParts [vla] . (map (addMark "trem") . lineOrch melody), [] )
     ; , ( [vc]
-    ;     , pitchDurRangeMinDyn (36, 72) (0, 1)
+    ;     , pitchDurRangeMinDyn (36, 72) (1, 2^12)
     ;     , weightSat (* 0.8)
     ;     , toParts [vc]  . (map (addMark "trem") . lineOrch melody), [] )
     ; , ( [db]
-    ;     , pitchDurRangeMinDyn (28, 52) (0, 1)
+    ;     , pitchDurRangeMinDyn (28, 52) (1, 2^12)
     ;     , weightSat (* 0.8)
-    ;     , toParts [db]  . (map (addMark "trem") . lineOrch melody), [] )
-    ; 
+    ;     , toParts [db]  . (map (addMark "trem") . lineOrch melody), [] ) ]
+    ;        
     ; , ( [vl1]
     ;     , pitchDurRangeMinDyn (79, 99) (0, 1)
     ;     , weightSat (* 0.8)
@@ -1251,7 +1261,7 @@ orchestrations : [orchestration] =
     ; , ( [db]
     ;     , pitchDurRangeMinDyn (52, 60) (0, 1)
     ;     , weightSat (* 0.8)
-    ;     , toParts [db]  . (artHarm . map (addMark "trem") . lineOrch melody), [] ) ]
+    ;     , toParts [db]  . (artHarm . map (addMark "trem") . lineOrch melody), [] ) ] 
 
 
 
