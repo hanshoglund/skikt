@@ -845,8 +845,8 @@ weightDen       f  (_, _, _, n, t, s, r)   = f t
 weightSat       f  (_, _, _, n, t, s, r)   = f s
 weightRes       f  (_, _, _, n, t, s, r)   = f r
 
-weight2 = split mean2
-weight3 = split mean3
+weight2 = splitWith mean2
+weight3 = splitWith3 mean3
 
 
 ; Predicates, weightings & orchestrations
@@ -858,10 +858,10 @@ minDyn      = (flip (>=) minDynLevel) . getFrameDynamic
 durRange   r = all (inRange r) . getFrameDurs
 pitchRange r = all (inRange r) . getFramePitches
 
-pitchDurRange       ps ds = split (&&) (pitchRange ps) (durRange ds)
-durRangeMinDyn      ds    = split (&&) (durRange ds) minDyn
-pitchRangeMinDyn    ps    = split (&&) (pitchRange ps) minDyn
-pitchDurRangeMinDyn ps ds = split (&&) (pitchDurRange ps ds) minDyn
+pitchDurRange       ps ds = splitWith (&&) (pitchRange ps) (durRange ds)
+durRangeMinDyn      ds    = splitWith (&&) (durRange ds) minDyn
+pitchRangeMinDyn    ps    = splitWith (&&) (pitchRange ps) minDyn
+pitchDurRangeMinDyn ps ds = splitWith (&&) (pitchDurRange ps ds) minDyn
 
 ; ([dur] -> [pitch]) -> frame -> music
 lineOrch     f  (_, ds, ps, n, _, _, _) = mapMusic (setDyn n) $ f ds ps
@@ -930,9 +930,11 @@ resonant2 = take 20
 layers : [layer] = [short, resonant1, resonant2]
 
 
+
 ; Orchestrations
 
 orchestrations : [orchestration] = 
+
     [ ( [fl]
        , pitchRangeMinDyn (60, 93)
        , weight2 (weightSat (gaussian 0.4 25.0)) (weightDyn (gaussian 0.4 30.0))
