@@ -14,10 +14,10 @@ fileName         = "out"
 preview          = false
 fixClefs         = false
 verbose          = `output 
-                 & `orchestration
+                 ; & `orchestration
 nonDeterministic = nil 
                  & `orchestration
-minDynLevel      = 0.1
+minDynLevel      = 0.0
 
 ; =============================================================================
 ; FOMUS
@@ -773,6 +773,8 @@ toPartsVoice parts voice = toVoice voice . toParts parts
 
 weightNone = const 0.5
 
+
+
 ; =============================================================================
 ; Main data
 
@@ -813,6 +815,9 @@ percNote inst = match inst
     x : `smallCymbal = 76
     x : `largeCymbal = 79
 
+
+; Layer definitions
+
 dynamic    = double
 density    = double
 saturation = double
@@ -839,8 +844,12 @@ weightDyn       f  (_, _, _, n, t, s, r)   = f n
 weightDen       f  (_, _, _, n, t, s, r)   = f t
 weightSat       f  (_, _, _, n, t, s, r)   = f s
 weightRes       f  (_, _, _, n, t, s, r)   = f r
+
 weight2 = split mean2
 weight3 = split mean3
+
+
+; Predicates, weightings & orchestrations
 
 ; frame -> bool
 minDyn      = (flip (>=) minDynLevel) . getFrameDynamic
@@ -869,6 +878,9 @@ artHarm music = map (addMark "artharm-sounding") music
 toPart  part  = mapMusic (setPart part)
 toVoice voice = mapMusic (setVoice voice)
 
+
+
+; Layer data
 
 curve1 = (sigToPos . take 700 . map (* 1.2) . sinG . mulG (line 4700) . cosG) (line 700)
 curve2 = (sigToPos . map negate . posToSig) curve1
@@ -918,7 +930,7 @@ resonant2 = take 20
 layers : [layer] = [short, resonant1, resonant2]
 
 
-
+; Orchestrations
 
 orchestrations : [orchestration] = 
     [ ( [fl]
@@ -1244,6 +1256,7 @@ orchestrations : [orchestration] =
 
 
 
+; =============================================================================
 ; Main program
 
 help _      = do  print "Skikt"
