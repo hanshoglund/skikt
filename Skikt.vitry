@@ -906,25 +906,25 @@ short = take 150
                  
 resonant1 = take 20
     zip7
-        map (+ 1) (rands 12)
+        map (+ 1) (rands 7)
         loop [1]
         cycle [[60, 62], [66, 60], [61, 62], [60, 62], [61, 62]]
         
         loop 0.3
         loop 0.0
-        loop 0.0
-        loop 5.0
+        line 20
+        loop 1.0
         
 resonant2 = take 20
     zip7
-        map (* 7/3) $ map (+ 1) $ (rands 12)
+        map (* 7/3) $ map (+ 1) $ (rands 7)
         loop [1]
-        cycle $ map (map (+ 7 + 24)) [[60, 62], [66, 60], [61, 62], [60, 62], [61, 62]]
+        cycle $ map (map (+ 1 + 24)) [[60, 62], [66, 60], [61, 62], [60, 62], [61, 62]]
         
         loop 0.3
         loop 0.0
-        loop 0.0
-        loop 5.0
+        map ((+ 1.0) . negate) $ line 20
+        loop 1.0
 
 testLayer = take 10
     zip7
@@ -937,7 +937,7 @@ testLayer = take 10
         loop 0.5
         loop 0.1
 
-layers : [layer] = [testLayer]
+layers : [layer] = [short, resonant1, resonant2]
 
 
 
@@ -1066,20 +1066,20 @@ orchestrations : [orchestration] =
     
     , ( [pno]
         , pitchRangeMinDyn (21, 108)
-        , weightRes (* 1.0)
+        , weightSatRes (fn (sat res) mean2 (gaussian 0.4 0.4 sat) (gaussian 1.0 100.0 res))
         , toParts [pno]  . longHarmOrch chord, [] )
     , ( [pno2]
         , pitchRangeMinDyn (21, 108)
-        , weightRes (* 1.0)
+        , weightSatRes (fn (sat res) mean2 (gaussian 0.4 0.4 sat) (gaussian 1.0 100.0 res))
         , toParts [pno2]  . longHarmOrch chord, [] )
 
     , ( [crot, vib]
         , pitchRangeMinDyn (84, 96)
-        , weightRes (* 1.0)
+        , weightSatRes (fn (sat res) mean2 (gaussian 0.7 0.5 sat) (gaussian 1.0 100.0 res))
         , toPartsVoice [crot] (1 .. 4) . longHarmOrch chord, [] )
     , ( [crot, vib]
         , pitchRangeMinDyn (53, 89)
-        , weightRes (* 1.0)
+        , weightSatRes (fn (sat res) mean2 (gaussian 0.6 0.4 sat) (gaussian 1.0 100.0 res))
         , toPartsVoice [vib] (1 .. 4)  . longHarmOrch chord, [] ) ]
                                                                                                     
     
