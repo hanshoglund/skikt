@@ -899,9 +899,11 @@ short = take 150
         loop [(1/3)]                          
         map single $ (cycle (60 .. 67)) 
         
-        cycle $ sample 150 curve2
+        ; cycle $ sample 150 curve2
+        take 150 $ sigToPos noise
         loop 0.0
-        cycle $ sample 150 curve1
+        ; cycle $ sample 150 curve2
+        take 150 $ sigToPos noise
         loop 0.0
                  
 resonant1 = take 20
@@ -926,18 +928,7 @@ resonant2 = take 20
         map ((+ 1.0) . negate) $ line 20
         loop 1.0
 
-testLayer = take 10
-    zip7
-        loop 4
-        loop [1/2, 1/2, 1/2, 1/2, 1/2]
-        loop [60, 60, 60, 60, 60]
-
-        map (* 1.0) (line 10)
-        map (* 1.0) (line 10)
-        loop 0.5
-        loop 0.1
-
-layers : [layer] = [short, resonant1, resonant2]
+layers : [layer] = [short]
 
 
 
@@ -1066,20 +1057,20 @@ orchestrations : [orchestration] =
     
     , ( [pno]
         , pitchRangeMinDyn (21, 108)
-        , weightSatRes (fn (sat res) mean2 (gaussian 0.4 0.4 sat) (gaussian 1.0 100.0 res))
+        , weightSatRes (fn (sat res) mean2 (gaussian 0.4 30.0 sat) (gaussian 1.0 100.0 res))
         , toParts [pno]  . longHarmOrch chord, [] )
     , ( [pno2]
         , pitchRangeMinDyn (21, 108)
-        , weightSatRes (fn (sat res) mean2 (gaussian 0.4 0.4 sat) (gaussian 1.0 100.0 res))
+        , weightSatRes (fn (sat res) mean2 (gaussian 0.4 30.0 sat) (gaussian 1.0 100.0 res))
         , toParts [pno2]  . longHarmOrch chord, [] )
 
     , ( [crot, vib]
         , pitchRangeMinDyn (84, 96)
-        , weightSatRes (fn (sat res) mean2 (gaussian 0.7 0.5 sat) (gaussian 1.0 100.0 res))
+        , weightSatRes (fn (sat res) mean2 (gaussian 0.7 30.0 sat) (gaussian 1.0 100.0 res))
         , toPartsVoice [crot] (1 .. 4) . longHarmOrch chord, [] )
     , ( [crot, vib]
         , pitchRangeMinDyn (53, 89)
-        , weightSatRes (fn (sat res) mean2 (gaussian 0.6 0.4 sat) (gaussian 1.0 100.0 res))
+        , weightSatRes (fn (sat res) mean2 (gaussian 0.6 30.0 sat) (gaussian 1.0 100.0 res))
         , toPartsVoice [vib] (1 .. 4)  . longHarmOrch chord, [] ) ]
                                                                                                     
     
@@ -1281,8 +1272,3 @@ test _      = fomus (get events, decls, info)
 dump x      = match x
     _ : events = join "\n" (get events)
     _          = join "\n" x
-
-main2 music = do  set (mapMusic (setPart fl) music) events
-                  main ()
-test2 music = do  set (mapMusic (setPart fl) music) events
-                  test ()
