@@ -14,10 +14,10 @@ fileName         = "out"
 preview          = false
 fixClefs         = false
 verbose          = `output 
-                 & `orchestration
+                 ; & `orchestration
 nonDeterministic = nil 
                  & `orchestration
-minDynLevel      = 0.0
+minDynLevel      = 0.1
 
 ; =============================================================================
 ; FOMUS
@@ -912,68 +912,75 @@ toVoice voice = mapMusic (setVoice voice)
 ; Layer data 
 
 
-curve1 = curve 700  $ map (* 1.5) . sinG . mulG (line 4700) . sinG
-curve2 = reverse curve1
-curve3 = curve 180 $ sinG . (map (+ 0.3))
-curve5 = curve 1800 $ sinG . addG (map (* 0.1) (sinG $ line 500))
-curve6 = curve 1800 $ sinG . (map (+ 0.11))
-curve7 = curve 1000 $ sinG . (map (+ 0.3))
-curve8 = curve 1000 $ sinG . (map (+ 0.7))
-curve9 = curve 1000 $ sinG . addG (map (* 0.1) (sinG . sinG $ line 600))
+curve1  = curve 700  $ map (* 1.5) . sinG . mulG (line 4700) . sinG
+curve2  = curve 700  $ map (* negate 1.5) . sinG . mulG (line 4700) . sinG
+curve3  = reverse curve1
+curve4  = reverse curve2
+
+curve5  = curve 700 $ sinG . map ((+ 0.75) . (* 0.5))
+curve6  = curve 700 $ sinG . map ((+ 0.0)  . (* 0.5))
+curve7  = curve 700 $ sinG . map ((+ 0.25) . (* 0.5))
+curve8  = curve 700 $ sinG . map ((+ 0.5)  . (* 0.5))
+
+curve9  = curve 700 $ sinG . map ((+ 0.75)  . (* 0.8))
+curve10 = curve 700 $ sinG . map ((+ 0.0)  . (* 0.8))
+curve11 = curve 700 $ sinG . map ((+ 0.25) . (* 0.8))
+curve12 = curve 700 $ sinG . map ((+ 0.5)  . (* 0.8))
 
 mode1 = map (+ 48) $ [ 0, 2, 4, 5, 7, 9, 11, 12, 14, 16, 17, 19, 21, 23, 24, 26, 28, 29, 31, 33, 35, 36 ]
 mode2 = map (+ 49) $ [ 0, 2, 4, 5, 7, 9, 11, 12, 14, 16, 17, 19, 21, 23, 24, 26, 28, 29, 31, 33, 35, 36 ]
 
 
-; scaledMode1 = zipWith (retainScaledRange (48, 84)) (zip (sample 300 curve7) (sample 300 curve8)) (loop mode1) 
+scaledMode1 = zipWith (retainScaledRange (48, 84)) (zip (sample 300 curve8) (sample 300 curve6)) (loop mode1) 
+scaledMode2 = zipWith (retainScaledRange (48, 84)) (zip (sample 280 curve8) (sample 280 curve6)) (loop mode2) 
 
 
-; short1 =
-;     zip7
-;         map  ((* 1/3) . (+ 1)) (rands 13)
-;         loop [(1/3)]                          
-;         map single $ map pick (map (prepend 60) scaledMode1) 
-; 
-;         sample 300 curve8
-;         sample 300 curve2
-;         sample 300 curve8
-;         loop 0.1
-;                
-; short2 =
-;     zip7
-;         map  ((* 1/3) . (+ 1)) (rands 13)
-;         loop [(1/3)]                          
-;         map single $ (cycle (60 .. 67)) 
-; 
-;         sample 300 curve7
-;         sample 300 curve6
-;         sample 300 curve7
-;         loop 0.1
-;                  
-; resonant1 =
-;     zip7
-;         map (+ 2) (rands 8)
-;         loop []
-;         cycle [[60, 63], [62, 67], [61, 67], [62, 65]]
-;         
-;         sample 170 curve7
-;         sample 170 curve6
-;         sample 170 curve4
-;         loop 1.0
-;         
-; resonant2 =
-;     zip7
-;         map (* 7/3) $ map (+ 1) $ (rands 7)
-;         loop []
-;         map (map (+ 7)) $ cycle [[60, 63], [62, 67], [61, 67], [62, 65]]
-;         
-;         sample 90 curve8
-;         sample 90 curve2
-;         sample 90 curve3
-;         loop 1.0
-; 
-; layers = [short1]
-;                    
+short1 =
+    zip7
+        map  ((* 1/3) . (+ 11) . round . (* 11.0)) $ (sample 300 curve5)
+        loop [(1/3)]                          
+        map single $ map pick (map (prepend 60) scaledMode1) 
+
+        sample 300 curve1
+        sample 300 curve2
+        sample 300 curve3
+        loop 0.1
+               
+short2 =
+    zip7
+        map  ((* 2/5) . (+ 11) . round . (* 11.0)) $ (sample 280 curve7)
+        loop [(1/3)]                          
+        map single $ map pick (map (prepend 60) scaledMode2) 
+
+        map (* 0.6) $ sample 280 curve4
+        sample 280 curve7
+        sample 280 curve3
+        loop 0.1
+                 
+resonant1 =
+    zip7
+        map (+ 2) (rands 8)
+        loop []
+        cycle [[60, 63], [62, 67], [61, 67], [62, 65]]
+        
+        sample 170 curve7
+        sample 170 curve6
+        sample 170 curve4
+        loop 1.0
+        
+resonant2 =
+    zip7
+        map (* 7/3) $ map (+ 1) $ (rands 7)
+        loop []
+        map (map (+ 7)) $ cycle [[60, 63], [62, 67], [61, 67], [62, 65]]
+        
+        sample 90 curve8
+        sample 90 curve2
+        sample 90 curve3
+        loop 1.0
+
+layers = [short1, short2]
+                   
 
 
 ; Orchestrations
