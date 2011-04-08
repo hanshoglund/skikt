@@ -306,14 +306,27 @@ chordsPhrase attack sustain release = phraseNotes attack sustain release .' chor
 chordPhrase marks                   = phraseNotes marks marks marks .' chord
 
 legato               = phrase ["(.."] [".(."] ["..)"]
+accentLegato         = phrase ["(..", ">"] [".(."] ["..)"]
+legatoAccent         = phrase ["(.."] [".(."] ["..)", ">"]
+legatoAccentStaccato = phrase ["(.."] [".(."] ["..)", ".", ">"]
+legatoStaccato       = phrase ["(.."] [".(."] ["..)", "."]
+legatoTenuto         = phrase ["(.."] [".(."] ["..)", "-"]
 dashedLegato         = phrase ["dash(.."] [".dash(."] ["..dash)"]
 dottedLegato         = phrase ["dot(.."] [".dot(."] ["..dot)"]
 staccato             = phrase ["."] ["."] ["."]
 tenuto               = phrase ["-"] ["-"] ["-"]
+staccatoTenuto       = phrase ["-", "."] ["-", "."] ["-", "."]
 portato              = phrase ["(..", "."] [".(.", "."] ["..)", "."]
-moltoPortato         = phrase ["-", "."] ["-", "."] ["-", "."]
+moltoPortato         = phrase ["(..", "-"] [".(.", "-"] ["..)", "-"]
 pizz                 = phrase ["pizz"] ["pizz"] ["pizz"]
 snap                 = phrase ["snap"] ["snap"] ["snap"]
+
+chordArp             = chordsPhrase ["arp"]
+chordArpUp           = chordsPhrase ["arp^"]
+chordArpDown         = chordsPhrase ["arp_"]
+chordsArp            = chordsPhrase ["arp"] ["arp"] ["arp"]
+chordsArpUp          = chordsPhrase ["arp^"] ["arp^"] ["arp^"]
+chordsArpDown        = chordsPhrase ["arp_"] ["arp_"] ["arp_"]
 
 chordsLegato         = chordsPhrase ["(.."] [] ["..)"]
 chordsDashedLegato   = chordsPhrase ["dash(.."] [] ["..dash)"]
@@ -322,12 +335,6 @@ chordsStaccato       = chordsPhrase ["."] ["."] ["."]
 chordsTenuto         = chordsPhrase ["-"] ["-"] ["-"]
 chordsPortato        = chordsPhrase ["(..", "."] ["."] ["..)", "."]
 chordsMoltoPortato   = chordsPhrase ["-", "."] ["-", "."] ["-", "."]
-chordArp             = chordsPhrase ["arp"]
-chordArpUp           = chordsPhrase ["arp^"]
-chordArpDown         = chordsPhrase ["arp_"]
-chordsArp            = chordsPhrase ["arp"] ["arp"] ["arp"]
-chordsArpUp          = chordsPhrase ["arp^"] ["arp^"] ["arp^"]
-chordsArpDown        = chordsPhrase ["arp_"] ["arp_"] ["arp_"]
 
 
 ; [dur] -> [dur] -> [pitch] -> [event]
@@ -353,6 +360,14 @@ restStaccato             = restPhrase ["."] ["."] ["."]
 restTenuto               = restPhrase ["-"] ["-"] ["-"]
 restPortato              = restPhrase ["(..", "."] [".(.", "."] ["..)", "."]
 restMoltoPortato         = restPhrase ["-", "."] ["-", "."] ["-", "."]
+
+restChordArp             = restChordsPhrase ["arp"]
+restChordArpUp           = restChordsPhrase ["arp^"]
+restChordArpDown         = restChordsPhrase ["arp_"]
+restChordsArp            = restChordsPhrase ["arp"] ["arp"] ["arp"]
+restChordsArpUp          = restChordsPhrase ["arp^"] ["arp^"] ["arp^"]
+restChordsArpDown        = restChordsPhrase ["arp_"] ["arp_"] ["arp_"]
+
 restChordsLegato         = restChordsPhrase ["(.."] [] ["..)"]
 restChordsDashedLegato   = restChordsPhrase ["dash(.."] [] ["..dash)"]
 restChordsDottedLegato   = restChordsPhrase ["dot(.."] [] ["..dot)"]
@@ -360,12 +375,6 @@ restChordsStaccato       = restChordsPhrase ["."] ["."] ["."]
 restChordsTenuto         = restChordsPhrase ["-"] ["-"] ["-"]
 restChordsPortato        = restChordsPhrase ["(..", "."] ["."] ["..)", "."]
 restChordsMoltoPortato   = restChordsPhrase ["-", "."] ["-", "."] ["-", "."]
-restChordArp             = restChordsPhrase ["arp"]
-restChordArpUp           = restChordsPhrase ["arp^"]
-restChordArpDown         = restChordsPhrase ["arp_"]
-restChordsArp            = restChordsPhrase ["arp"] ["arp"] ["arp"]
-restChordsArpUp          = restChordsPhrase ["arp^"] ["arp^"] ["arp^"]
-restChordsArpDown        = restChordsPhrase ["arp_"] ["arp_"] ["arp_"]
 
 
 
@@ -864,11 +873,11 @@ pitchRangeMinDyn    ps    = splitWith (&&) (pitchRange ps) minDyn
 pitchDurRangeMinDyn ps ds = splitWith (&&) (pitchDurRange ps ds) minDyn
 
 ; ([dur] -> [pitch]) -> frame -> music
-lineOrch     f  (_, ds, ps, n, _, _, _) = mapMusic (setDyn n) $ f ds ps
+lineOrch     f   (_, ds, ps, n, _, _, _) = mapMusic (setDyn n) $ f ds ps
 ; (dur -> [pitch]) -> frame -> music
-harmOrch     f  (d, ds, ps, n, _, _, _) = mapMusic (setDyn n) $ f ds (loop ps)
-longHarmOrch f  (d, _,  ps, n, _, _, _) = mapMusic (setDyn n) $ f d ps
-percOrch     id (d, _,  _,  n, _, _, _) = mapMusic (setDyn n) $ notes [0] [d] [percNote id]
+harmOrch     f   (d, ds, ps, n, _, _, _) = mapMusic (setDyn n) $ f ds (loop ps)
+longHarmOrch f   (d, _,  ps, n, _, _, _) = mapMusic (setDyn n) $ f d ps
+percOrch     f i (d, ds, _,  n, _, _, _) = mapMusic (setDyn n) $ f ds (loop $ percNote i) 
 
 ; music -> music
 artHarm music = map (addMark "artharm-sounding") music
@@ -899,11 +908,11 @@ short = take 150
         loop [(1/3)]                          
         map single $ (cycle (60 .. 67)) 
         
+        loop 0.5
+        loop 0.1
         ; cycle $ sample 150 curve2
-        take 150 $ sigToPos noise
-        loop 0.0
-        ; cycle $ sample 150 curve2
-        take 150 $ sigToPos noise
+        ; take 150 $ sigToPos noise
+        curve1
         loop 0.0
                  
 resonant1 = take 20
@@ -938,34 +947,34 @@ orchestrations : [orchestration] =
 
     [ ( [fl]
         , pitchRangeMinDyn (60, 93)
-        , weight3 (weightDyn $ gaussian 0.4 40.0) (weightDen $ gaussian 0.5 35.0) (weightSat $ gaussian 0.4 25.0) 
+        , weight3 (weightDyn $ gaussian 0.4 30.0) (weightDen $ gaussian 0.5 35.0) (weightSat $ gaussian 0.4 25.0) 
         , toParts [fl]  . lineOrch melody, [] )
     , ( [ob]
         , pitchRangeMinDyn (62, 88)
-        , weight3 (weightDyn $ gaussian 0.4 40.0) (weightDen $ gaussian 0.5 35.0) (weightSat $ gaussian 0.5 25.0)
+        , weight3 (weightDyn $ gaussian 0.4 30.0) (weightDen $ gaussian 0.5 35.0) (weightSat $ gaussian 0.5 25.0)
         , toParts [ob]  . lineOrch melody, [] )
     , ( [cl]
         , pitchRangeMinDyn (50, 86)
-        , weight3 (weightDyn $ gaussian 0.4 40.0) (weightDen $ gaussian 0.5 35.0) (weightSat $ gaussian 0.45 25.0)
+        , weight3 (weightDyn $ gaussian 0.4 30.0) (weightDen $ gaussian 0.5 35.0) (weightSat $ gaussian 0.45 25.0)
         , toParts [cl]  . lineOrch melody, [] )
     , ( [bsn]
         , pitchRangeMinDyn (34, 58)
-        , weight3 (weightDyn $ gaussian 0.4 40.0) (weightDen $ gaussian 0.5 35.0) (weightSat $ gaussian 0.5 25.0)
+        , weight3 (weightDyn $ gaussian 0.4 30.0) (weightDen $ gaussian 0.5 35.0) (weightSat $ gaussian 0.5 25.0)
         , toParts [bsn] . lineOrch melody, [] )   
     , ( [fl]         
         , pitchDurRangeMinDyn (60, 93) (0, 1)
-        , weight3 (weightDyn $ gaussian 0.4 40.0) (weightDen $ gaussian 0.1 35.0) (weightSat $ gaussian 0.4 25.0)
+        , weight3 (weightDyn $ gaussian 0.4 30.0) (weightDen $ gaussian 0.1 35.0) (weightSat $ gaussian 0.4 25.0)
         , toParts [fl]  . lineOrch staccato, [] )
     , ( [ob]
         , pitchDurRangeMinDyn (62, 88) (0, 1)
-        , weight3 (weightDyn $ gaussian 0.4 40.0) (weightDen $ gaussian 0.1 35.0) (weightSat $ gaussian 0.5 25.0)
+        , weight3 (weightDyn $ gaussian 0.4 30.0) (weightDen $ gaussian 0.1 35.0) (weightSat $ gaussian 0.5 25.0)
         , toParts [ob]  . lineOrch staccato, [] )
     , ( [cl]
         , pitchDurRangeMinDyn (50, 86) (0, 1)
-        , weight3 (weightDyn $ gaussian 0.4 40.0) (weightDen $ gaussian 0.1 35.0) (weightSat $ gaussian 0.45 25.0)
+        , weight3 (weightDyn $ gaussian 0.4 30.0) (weightDen $ gaussian 0.1 35.0) (weightSat $ gaussian 0.45 25.0)
         , toParts [cl]  . lineOrch staccato, [] )
     , ( [bsn], pitchDurRangeMinDyn (34, 58) (0, 1)
-        , weight3 (weightDyn $ gaussian 0.4 40.0) (weightDen $ gaussian 0.1 35.0) (weightSat $ gaussian 0.5 25.0)
+        , weight3 (weightDyn $ gaussian 0.4 30.0) (weightDen $ gaussian 0.1 35.0) (weightSat $ gaussian 0.5 25.0)
         , toParts [bsn] . lineOrch staccato, [] )                                                                                        
     
     
@@ -1020,22 +1029,22 @@ orchestrations : [orchestration] =
                                                                                                     
     
     
-    ; , ( [prc]
-    ;     , durRange (0, 1)
-    ;     , weightSat (* 1.0)
-    ;     , toParts [prc]  . percOrch `bassDrum, [] )
-    ; , ( [prc]
-    ;     , durRange (2, 10)
-    ;     , weightAll (fn (dyn den sat res) mean [dyn, sat] * 1.0)
-    ;     , toParts [prc]  . percOrch `snareDrum, [] )
-    ; , ( [prc]
-    ;     , durRange (0, 1)
-    ;     , weightSat (* 1.0)
-    ;     , toParts [prc]  . percOrch `smallCymbal, [] )
-    ; , ( [prc]
-    ;     , durRange (2, 10)
-    ;     , weightSat (* 1.0)
-    ;     , toParts [prc]  . percOrch `largeCymbal, [] )
+    , ( [prc]
+        , durRange (0, 1)
+        , weight3 (weightDyn $ (* 0.5) . gaussian 0.6 30.0) (weightDen $ gaussian 0.1 35.0) (weightSat $ gaussian 0.9 25.0) 
+        , toParts [prc]  . percOrch melody `bassDrum, [] )
+    , ( [prc]
+        , durRange (2, 10)
+        , weight3 (weightDyn $ (* 0.5) . gaussian 0.6 30.0) (weightDen $ gaussian 0.1 35.0) (weightSat $ gaussian 0.9 25.0) 
+        , toParts [prc]  . percOrch melody `snareDrum, [] )
+    , ( [prc]
+        , durRange (1, 2 ^ 12)
+        , weight3 (weightDyn $ (* 0.5) . gaussian 0.6 30.0) (weightDen $ gaussian 0.1 35.0) (weightSat $ gaussian 0.9 25.0) 
+        , toParts [prc]  . percOrch melody `smallCymbal, [] )
+    , ( [prc]
+        , durRange (1, 2 ^ 12)
+        , weight3 (weightDyn $ (* 0.5) . gaussian 0.6 30.0) (weightDen $ gaussian 0.1 35.0) (weightSat $ gaussian 0.9 25.0) 
+        , toParts [prc]  . percOrch melody `largeCymbal, [] )
     ; , ( [prc]
     ;     , const true
     ;     , weightSat (* 1.0)
