@@ -524,7 +524,21 @@ inRange    (a, b) x      = a <= x && x <= b
 isSubRange (a, b) (c, d) = c <= a && b <= d
 isOverlapping            = (!= ()) .' overlap
 
+mapRange f (a, b) = (f a, f b)
 
+; range prec -> range real-> [prec] -> [prec]
+retainScaledRange (c, d) (a, b) = 
+                    do  c = approx c
+                        d = approx d
+                        delta = d - c
+                        retain (inRange (round (a * delta + c), round (b * delta + c)))
+
+; range int -> [a] -> [a]
+indexRange (a, b) = substr a (succ b - a)
+
+; range real -> [a] -> [a]
+clip (a, b) xs    = let n = approx $ length xs
+                        indexRange (round (a * n), round (b * n)) xs
 
 
 ; Musical structures
@@ -547,6 +561,9 @@ gaussian center width = gauss . (* width) . (+ negate center)
 
 
 ; Curves
+
+; int -> ([float] -> [float]) -> [float]
+curve length f = take length . sigToPos . f $ line length
 
 noise  = unfold (fn (x) (randomDouble () * 2.0 - 1.0, 0)) 0
 line n = cycle (map (approx . flip (/) n) (0 .. n))
@@ -854,6 +871,9 @@ weightDen       f  (_, _, _, n, t, s, r)   = f t
 weightSat       f  (_, _, _, n, t, s, r)   = f s
 weightRes       f  (_, _, _, n, t, s, r)   = f r
 
+; layer -> dur
+getLayerDur = sum . map getFrameDur
+
 weight2 = splitWith mean2
 weight3 = splitWith3 mean3
 
@@ -889,59 +909,76 @@ toVoice voice = mapMusic (setVoice voice)
 
 
 
-; Layer data
-
-curve1 = (sigToPos . take 700 . map (* 1.2) . sinG . mulG (line 4700) . cosG) (line 700)
-curve2 = (sigToPos . map negate . posToSig) curve1
-curve3 = reverse curve1
-curve4 = (sigToPos . take 700 . sinG . mulG (line 4700) . cosG) (line 300)
-curve5 = (sigToPos . take 700 . sinG . addG (map (* 0.1) (sinG (line 300)))) (line 1800)
-curve6 = (sigToPos . take 700 . sinG . (map (+ 0.11))) (line 1800)
-curve7 = (sigToPos . take 700 . sinG . (map (+ 0.3))) (line 1000)
-curve8 = (sigToPos . take 700 . sinG . (map (+ 0.7))) (line 1000)
-curve9 = (sigToPos . take 700 . sinG . addG (map (* 0.1) ((sinG . sinG) (line 600)))) (line 600)
+; Layer data 
 
 
-short = take 300
-    zip7
-        map  ((* 1/3) . (+ 1)) (rands 13)
-        loop [(1/3)]                          
-        map single $ (cycle (60 .. 67)) 
+curve1 = curve 700  $ map (* 1.5) . sinG . mulG (line 4700) . sinG
+curve2 = reverse curve1
+curve3 = curve 180 $ sinG . (map (+ 0.3))
+curve5 = curve 1800 $ sinG . addG (map (* 0.1) (sinG $ line 500))
+curve6 = curve 1800 $ sinG . (map (+ 0.11))
+curve7 = curve 1000 $ sinG . (map (+ 0.3))
+curve8 = curve 1000 $ sinG . (map (+ 0.7))
+curve9 = curve 1000 $ sinG . addG (map (* 0.1) (sinG . sinG $ line 600))
 
-        curve1
-        curve2
-        curve3
-        curve4
-                 
-resonant1 = take 20
-    zip7
-        map (+ 1) (rands 7)
-        loop [1]
-        cycle [[60, 62], [66, 60], [61, 62], [60, 62], [61, 62]]
-        
-        loop 0.3
-        loop 0.0
-        line 20
-        loop 1.0
-        
-resonant2 = take 20
-    zip7
-        map (* 7/3) $ map (+ 1) $ (rands 7)
-        loop [1]
-        cycle $ map (map (+ 1 + 24)) [[60, 62], [66, 60], [61, 62], [60, 62], [61, 62]]
-        
-        loop 0.3
-        loop 0.0
-        map ((+ 1.0) . negate) $ line 20
-        loop 1.0
+mode1 = map (+ 48) $ [ 0, 2, 4, 5, 7, 9, 11, 12, 14, 16, 17, 19, 21, 23, 24, 26, 28, 29, 31, 33, 35, 36 ]
+mode2 = map (+ 49) $ [ 0, 2, 4, 5, 7, 9, 11, 12, 14, 16, 17, 19, 21, 23, 24, 26, 28, 29, 31, 33, 35, 36 ]
 
-layers : [layer] = [short, resonant1, resonant2]
 
+; scaledMode1 = zipWith (retainScaledRange (48, 84)) (zip (sample 300 curve7) (sample 300 curve8)) (loop mode1) 
+
+
+; short1 =
+;     zip7
+;         map  ((* 1/3) . (+ 1)) (rands 13)
+;         loop [(1/3)]                          
+;         map single $ map pick (map (prepend 60) scaledMode1) 
+; 
+;         sample 300 curve8
+;         sample 300 curve2
+;         sample 300 curve8
+;         loop 0.1
+;                
+; short2 =
+;     zip7
+;         map  ((* 1/3) . (+ 1)) (rands 13)
+;         loop [(1/3)]                          
+;         map single $ (cycle (60 .. 67)) 
+; 
+;         sample 300 curve7
+;         sample 300 curve6
+;         sample 300 curve7
+;         loop 0.1
+;                  
+; resonant1 =
+;     zip7
+;         map (+ 2) (rands 8)
+;         loop []
+;         cycle [[60, 63], [62, 67], [61, 67], [62, 65]]
+;         
+;         sample 170 curve7
+;         sample 170 curve6
+;         sample 170 curve4
+;         loop 1.0
+;         
+; resonant2 =
+;     zip7
+;         map (* 7/3) $ map (+ 1) $ (rands 7)
+;         loop []
+;         map (map (+ 7)) $ cycle [[60, 63], [62, 67], [61, 67], [62, 65]]
+;         
+;         sample 90 curve8
+;         sample 90 curve2
+;         sample 90 curve3
+;         loop 1.0
+; 
+; layers = [short1]
+;                    
 
 
 ; Orchestrations
 
-orchestrations : [orchestration] = 
+orchestrations = 
 
     [ ( [fl]
         , pitchRangeMinDyn (60, 93)
@@ -1064,20 +1101,24 @@ orchestrations : [orchestration] =
     
     , ( [pno]
         , pitchRangeMinDyn (21, 108)
-        , weightSatRes (fn (sat res) mean2 (gaussian 0.4 30.0 sat) (gaussian 1.0 100.0 res))
+        ; , weightSatRes (fn (sat res) mean2 (gaussian 0.4 30.0 sat) (gaussian 1.0 100.0 res))
+        , weightSatRes (fn (sat res) (gaussian 1.0 100.0 res))
         , toParts [pno]  . longHarmOrch chord, [] )
     , ( [pno2]
         , pitchRangeMinDyn (21, 108)
-        , weightSatRes (fn (sat res) mean2 (gaussian 0.4 30.0 sat) (gaussian 1.0 100.0 res))
+        ; , weightSatRes (fn (sat res) mean2 (gaussian 0.4 30.0 sat) (gaussian 1.0 100.0 res))
+        , weightSatRes (fn (sat res) (gaussian 1.0 100.0 res))
         , toParts [pno2]  . longHarmOrch chord, [] )
 
     , ( [crot, vib]
         , pitchRangeMinDyn (84, 96)
-        , weightSatRes (fn (sat res) mean2 (gaussian 0.7 30.0 sat) (gaussian 1.0 100.0 res))
+        ; , weightSatRes (fn (sat res) mean2 (gaussian 0.7 30.0 sat) (gaussian 1.0 100.0 res))
+        , weightSatRes (fn (sat res) (gaussian 1.0 100.0 res))
         , toPartsVoice [crot] (1 .. 4) . longHarmOrch chord, [] )
     , ( [crot, vib]
         , pitchRangeMinDyn (53, 89)
-        , weightSatRes (fn (sat res) mean2 (gaussian 0.6 30.0 sat) (gaussian 1.0 100.0 res))
+        ; , weightSatRes (fn (sat res) mean2 (gaussian 0.6 30.0 sat) (gaussian 1.0 100.0 res))
+        , weightSatRes (fn (sat res) (gaussian 1.0 100.0 res))
         , toPartsVoice [vib] (1 .. 4)  . longHarmOrch chord, [] )
                                                                                                     
     
@@ -1277,7 +1318,7 @@ orchestrations : [orchestration] =
 help _      = do  print "Skikt"
                   print "   use: help (), main (), test ()"
                   nil
-events      = ref (orchestrate layers orchestrations)
+events      = ref (delay orchestrate layers orchestrations)
 main _      = (export . fomus) (get events, decls, info)
 test _      = fomus (get events, decls, info)
 
