@@ -504,6 +504,13 @@ listOrString x = match x (x : [_] = fomusList x) (_ = string x)
 ; Util
 
 
+firstLast xs = [head xs, last xs]
+tessitura xs = match xs
+    _ : []       = [60]
+    (x, xs : []) = [x, x]
+    (x, xs)      = [x, last xs]
+        
+
 ; Ranges
 ; An inclusive range (interval)
 
@@ -727,12 +734,12 @@ withParts f x = setParts (f (getParts x)) x
 
 
 ; [layer] -> [orchestration] -> music
-orchestrate layers : [layer] orchs : [orchestration] =
+orchestrate layers orchs =
     let offsets = take (length layers) (loop 0)
         delay orchestrate_ 0 offsets [] layers orchs
 
 ; [time] -> [usage] -> [layer] -> [orchestration] -> music
-orchestrate_ lastOffset : prec offsets : [time] usage : [usage] layers : [layer] orchs : [orchestration] =
+orchestrate_ lastOffset : prec offsets : [time] usage : [usage] layers orchs =
     match offsets
         _ : [] = []
 
@@ -933,6 +940,8 @@ mode2 = map (+ 49) $ [ 0, 2, 4, 5, 7, 9, 11, 12, 14, 16, 17, 19, 21, 23, 24, 26,
 
 scaledMode1 = zipWith (retainScaledRange (48, 84)) (zip (sample 300 curve8) (sample 300 curve6)) (loop mode1) 
 scaledMode2 = zipWith (retainScaledRange (48, 84)) (zip (sample 280 curve8) (sample 280 curve6)) (loop mode2) 
+scaledMode3 = zipWith (retainScaledRange (48, 84)) (zip (sample 70 curve8) (sample 70 curve6)) (loop mode1) 
+scaledMode4 = zipWith (retainScaledRange (48, 84)) (zip (sample 70 curve8) (sample 70 curve6)) (loop mode2) 
 
 
 short1 =
@@ -959,28 +968,32 @@ short2 =
                  
 resonant1 =
     zip7
-        map (+ 2) (rands 8)
+        map (* (6/2)) $ map (+ 1) (rands 5)
         loop []
-        cycle [[60, 63], [62, 67], [61, 67], [62, 65]]
+        map tessitura $ scaledMode3 
         
-        sample 170 curve7
-        sample 170 curve6
-        sample 170 curve4
+        map (* 0.8) $ sample 70 curve7
+        sample 70 curve6
+        sample 70 curve4
         loop 1.0
         
 resonant2 =
-    zip7
-        map (* 7/3) $ map (+ 1) $ (rands 7)
+    zip7              
+        map (* (7/3) + 1) $ map (+ 1) (rands 3)
         loop []
-        map (map (+ 7)) $ cycle [[60, 63], [62, 67], [61, 67], [62, 65]]
-        
-        sample 90 curve8
-        sample 90 curve2
-        sample 90 curve3
-        loop 1.0
+        map tessitura $ scaledMode4
 
-layers = [short1, short2]
-                   
+        map (* 0.8) $ sample 70 curve8
+        sample 70 curve2
+        sample 70 curve3
+        loop 1.0
+                                  
+dummy1 = (200, [1], [60], 0.0, 0.0, 0.0, 0.0)
+dummy2 = (400, [1], [60], 0.0, 0.0, 0.0, 0.0)
+layers = [short1, short2, prepend dummy1 resonant1, prepend dummy2 resonant2]
+
+
+
 
 
 ; Orchestrations
