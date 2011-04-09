@@ -940,8 +940,8 @@ mode2 = map (+ 49) $ [ 0, 2, 4, 5, 7, 9, 11, 12, 14, 16, 17, 19, 21, 23, 24, 26,
 
 scaledMode1 = zipWith (retainScaledRange (48, 84)) (zip (sample 300 curve8) (sample 300 curve6)) (loop mode1) 
 scaledMode2 = zipWith (retainScaledRange (48, 84)) (zip (sample 280 curve8) (sample 280 curve6)) (loop mode2) 
-scaledMode3 = zipWith (retainScaledRange (48, 84)) (zip (sample 70 curve8) (sample 70 curve6)) (loop mode1) 
-scaledMode4 = zipWith (retainScaledRange (48, 84)) (zip (sample 70 curve8) (sample 70 curve6)) (loop mode2) 
+scaledMode3 = zipWith (retainScaledRange (48, 84)) (zip (sample 140 curve8) (sample 140 curve6)) (loop mode1) 
+scaledMode4 = zipWith (retainScaledRange (48, 84)) (zip (sample 140 curve8) (sample 140 curve6)) (loop mode2) 
 
 
 short1 =
@@ -952,7 +952,7 @@ short1 =
 
         sample 300 curve1
         sample 300 curve2
-        sample 300 curve3
+        sample 300 curve12
         loop 0.1
                
 short2 =
@@ -963,7 +963,7 @@ short2 =
 
         map (* 0.6) $ sample 280 curve4
         sample 280 curve7
-        sample 280 curve3
+        sample 280 curve1
         loop 0.1
                  
 resonant1 =
@@ -973,8 +973,8 @@ resonant1 =
         map tessitura $ scaledMode3 
         
         map (* 0.8) $ sample 70 curve7
-        sample 70 curve6
-        sample 70 curve4
+        sample 140 curve6
+        sample 140 curve4
         loop 1.0
         
 resonant2 =
@@ -984,12 +984,12 @@ resonant2 =
         map tessitura $ scaledMode4
 
         map (* 0.8) $ sample 70 curve8
-        sample 70 curve2
-        sample 70 curve3
+        sample 140 curve2
+        sample 140 curve3
         loop 1.0
                                   
-dummy1 = (200, [1], [60], 0.0, 0.0, 0.0, 0.0)
-dummy2 = (400, [1], [60], 0.0, 0.0, 0.0, 0.0)
+dummy1 = (400, [1], [60], 0.0, 0.0, 0.0, 0.0)
+dummy2 = (700, [1], [60], 0.0, 0.0, 0.0, 0.0)
 layers = [short1, short2, prepend dummy1 resonant1, prepend dummy2 resonant2]
 
 
