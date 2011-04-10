@@ -766,7 +766,7 @@ orchestrateFrame usage : [usage] frame : frame orchs : [orchestration] =
         orchs         = filterIllegal orchs
 
         match orchs
-            _ : [] = do  warnNoOrchs ()
+            _ : [] = do  warnNoOrchs frame
                          (usage, [])
             _      = do  weights = map   (weightFrame frame) orchs
                          i       = maximumWeight weights
@@ -790,7 +790,9 @@ acceptsFrame frame       = (flip apply) frame . getPredicate
 weightFrame frame        = (flip apply) frame . getWeighter
 somePartBusy usage       = any (elementOf (concat (map getUsagePart usage))) . getParts
 maximumWeight            = if (matches `orchestration nonDeterministic) then anyMaximumIndex else maximumIndex
-warnNoOrchs _            = do  print "warning: no orchestration"
+warnNoOrchs frame        = do  print "warning: no orchestration"
+                               ; if (matches `orchestration verbose) then (print frame) else nil
+                               print frame
                                nil
 printOrchs orchs weights i = do  names = map (map getName) (map getParts orchs)
                                  print $ "orchs  :\n    " ++ (join "\n    " $ zip names (map (truncate 3) weights))
@@ -940,13 +942,13 @@ mode2 = map (+ 49) $ [ 0, 2, 4, 5, 7, 9, 11, 12, 14, 16, 17, 19, 21, 23, 24, 26,
 
 scaledMode1 = zipWith (retainScaledRange (48, 84)) (zip (sample 300 curve8) (sample 300 curve6)) (loop mode1) 
 scaledMode2 = zipWith (retainScaledRange (48, 84)) (zip (sample 280 curve8) (sample 280 curve6)) (loop mode2) 
-scaledMode3 = zipWith (retainScaledRange (48, 84)) (zip (sample 140 curve8) (sample 140 curve6)) (loop mode1) 
-scaledMode4 = zipWith (retainScaledRange (48, 84)) (zip (sample 140 curve8) (sample 140 curve6)) (loop mode2) 
+scaledMode3 = zipWith (retainScaledRange (48, 84)) (zip (sample 70 curve8) (sample 70 curve6)) (loop mode1) 
+scaledMode4 = zipWith (retainScaledRange (48, 84)) (zip (sample 100 curve8) (sample 100 curve6)) (loop mode2) 
 
 
 short1 =
     zip7
-        map  ((* 1/3) . (+ 11) . round . (* 11.0)) $ (sample 300 curve5)
+        map  ((* 1/3) . (+ 7) . round . (* 18.0)) $ (sample 300 curve5)
         loop [(1/3)]                          
         map single $ map pick (map (prepend 60) scaledMode1) 
 
@@ -957,7 +959,7 @@ short1 =
                
 short2 =
     zip7
-        map  ((* 2/5) . (+ 11) . round . (* 11.0)) $ (sample 280 curve7)
+        map  ((* 2/5) . (+ 6) . round . (* 21.0)) $ (sample 280 curve7)
         loop [(1/3)]                          
         map single $ map pick (map (prepend 60) scaledMode2) 
 
@@ -973,8 +975,8 @@ resonant1 =
         map tessitura $ scaledMode3 
         
         map (* 0.8) $ sample 70 curve7
-        sample 140 curve6
-        sample 140 curve4
+        sample 70 curve6
+        sample 70 curve4
         loop 1.0
         
 resonant2 =
@@ -983,9 +985,9 @@ resonant2 =
         loop []
         map tessitura $ scaledMode4
 
-        map (* 0.8) $ sample 70 curve8
-        sample 140 curve2
-        sample 140 curve3
+        map (* 0.8) $ sample 100 curve8
+        sample 100 curve2
+        sample 100 curve3
         loop 1.0
                                   
 dummy1 = (400, [1], [60], 0.0, 0.0, 0.0, 0.0)
