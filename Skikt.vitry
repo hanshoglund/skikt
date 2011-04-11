@@ -17,7 +17,7 @@ verbose          = `output
                  ; & `orchestration
 nonDeterministic = nil 
                  & `orchestration
-minDynLevel      = 0.1
+minDynLevel      = 0.0
 
 ; =============================================================================
 ; FOMUS
@@ -984,19 +984,20 @@ short2 =
 ;             sample 75 curve4
 ;             loop 1.0    
 ;         
-; resonant2 =
-;     let pitches = scaleMode 75 curve8 curve6 mode1
-;         zip7              
-;             map (* (7/3) + 1) $ map (+ 1) (rands 3)
-;             loop []
-;             map (take 3 . shuffle) pitches
-; 
-;             map (* 0.8) $ sample 100 curve8
-;             sample 100 curve2
-;             sample 100 curve3
-;             loop 1.0  
+resonant2 =
+    let pitches = scaleMode 75 curve8 curve6 mode1
+        zip7              
+            map (* (7/3) + 1) $ map (+ 1) (rands 3)
+            loop []
+            ; map (take 3 . shuffle) pitches
+            map tessitura $ pitches
+
+            map (* 1.8) $ sample 100 curve8
+            sample 100 curve2
+            sample 100 curve3
+            loop 1.0  
                                   
-layers = [short1, short2]
+layers = [resonant2]
 
 
 
@@ -1129,7 +1130,7 @@ orchestrations =
         , pitchRangeMinDyn (21, 108)
         ; , weightSatRes (fn (sat res) mean2 (gaussian 0.4 30.0 sat) (gaussian 1.0 100.0 res))
         , weightSatRes (fn (sat res) (gaussian 1.0 100.0 res))
-        , toParts [pno]  . longHarmOrch chord, [] )
+        , toParts [pno]  . longHarmOrch chord, [] )    
     ; , ( [pno2]
     ;     , pitchRangeMinDyn (21, 108)
     ;     ; , weightSatRes (fn (sat res) mean2 (gaussian 0.4 30.0 sat) (gaussian 1.0 100.0 res))
@@ -1145,7 +1146,7 @@ orchestrations =
         , pitchRangeMinDyn (53, 89)
         ; , weightSatRes (fn (sat res) mean2 (gaussian 0.6 30.0 sat) (gaussian 1.0 100.0 res))
         , weightSatRes (fn (sat res) (gaussian 1.0 100.0 res))
-        , toPartsVoice [vib] (1 .. 4)  . longHarmOrch chord, [] )
+        , toPartsVoice [vib] [1] . longHarmOrch chord, [] )
                                                                                                     
     
     
