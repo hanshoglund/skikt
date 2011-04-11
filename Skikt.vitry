@@ -829,7 +829,7 @@ hrn  : part = ("hrn",  "horn",           [ ("abbr", "Hrn."), ("name", "Horn in F
 tpt  : part = ("tpt",  "bflat-trumpet",  [ ("abbr", "Tpt.") ])
 tbn  : part = ("tbn",  "tenor-trombone", [ ("abbr", "Tbn.") ])
 pno  : part = ("pno",  "piano",          [ ("abbr", "Pno.") ])
-pno2 : part = ("pno2", "piano",          [ ("abbr", "Pno. II") ])
+; pno2 : part = ("pno2", "piano",          [ ("abbr", "Pno. II") ])
 vib  : part = ("vib",  "vibraphone",     [ ("abbr", "Vib.") ])
 crot : part = ("crot", "vibraphone",     [ ("abbr", "Crot."), ("name", "Crotales") ])
 prc  : part = ("perc", "perc1",          [ ("abbr", "Perc."), ("name", "Percussion") ])
@@ -841,7 +841,7 @@ db   : part = ("db",   "bass",           [ ("abbr", "Kb.") ])
 
 
 
-parts : [part] = [ fl, ob, cl, bsn, hrn, tpt, tbn, pno, pno2, vib, crot, prc, vl1, vl2, vla, vc, db ]
+parts : [part] = [ fl, ob, cl, bsn, hrn, tpt, tbn, pno, vib, crot, prc, vl1, vl2, vla, vc, db ]
 decls : [decl] = insts ++ parts
 
 percNote inst = match inst
@@ -936,63 +936,67 @@ curve10 = curve 700 $ sinG . map ((+ 0.0)  . (* 0.8))
 curve11 = curve 700 $ sinG . map ((+ 0.25) . (* 0.8))
 curve12 = curve 700 $ sinG . map ((+ 0.5)  . (* 0.8))
 
-mode1 = map (+ 48) $ [ 0, 2, 4, 5, 7, 9, 11, 12, 14, 16, 17, 19, 21, 23, 24, 26, 28, 29, 31, 33, 35, 36 ]
-mode2 = map (+ 49) $ [ 0, 2, 4, 5, 7, 9, 11, 12, 14, 16, 17, 19, 21, 23, 24, 26, 28, 29, 31, 33, 35, 36 ]
+mode1 = map (+ 48) $ map (modeFrom [0, 2, 4] 7) (0 .. 30)
+mode2 = map (+ 49) $ map (modeFrom [0, 2, 3] 6) (0 .. 30)
 
+; scaledMode1 = filter (== []) $ zipWith (retainScaledRange (48, 84)) (zip (sample 120 curve8) (sample 120 curve6)) (loop mode1) 
+; scaledMode2 = filter (== []) $ zipWith (retainScaledRange (48, 84)) (zip (sample 100 curve8) (sample 100 curve6)) (loop mode2) 
+; scaledMode3 = filter (== []) $ zipWith (retainScaledRange (48, 84)) (zip (sample 75 curve8) (sample 75 curve6)) (loop mode1) 
+; scaledMode4 = filter (== []) $ zipWith (retainScaledRange (48, 84)) (zip (sample 100 curve8) (sample 100 curve6)) (loop mode2) 
 
-scaledMode1 = zipWith (retainScaledRange (48, 84)) (zip (sample 300 curve8) (sample 300 curve6)) (loop mode1) 
-scaledMode2 = zipWith (retainScaledRange (48, 84)) (zip (sample 280 curve8) (sample 280 curve6)) (loop mode2) 
-scaledMode3 = zipWith (retainScaledRange (48, 84)) (zip (sample 70 curve8) (sample 70 curve6)) (loop mode1) 
-scaledMode4 = zipWith (retainScaledRange (48, 84)) (zip (sample 100 curve8) (sample 100 curve6)) (loop mode2) 
+scaleMode l c1 c2 m = 
+    filter (== []) $ zipWith (retainScaledRange (36, 92)) (zip (sample l c1) (sample l c2)) (loop m) 
+
 
 
 short1 =
     zip7
-        map  ((* 1/3) . (+ 7) . round . (* 18.0)) $ (sample 300 curve5)
+        map  ((* 1/3) . (+ 7) . round . (* 18.0)) $ (sample 200 curve5)
         loop [(1/3)]                          
-        map single $ map pick (map (prepend 60) scaledMode1) 
+        map single $ map pick (scaleMode 200 curve8 curve6 mode1)
 
-        sample 300 curve1
-        sample 300 curve2
-        sample 300 curve12
+        sample 200 curve1
+        sample 200 curve2
+        sample 200 curve12
         loop 0.1
                
 short2 =
     zip7
-        map  ((* 2/5) . (+ 6) . round . (* 21.0)) $ (sample 280 curve7)
+        map  ((* 2/5) . (+ 5) . round . (* 15.0)) $ (sample 180 curve7)
         loop [(1/3)]                          
-        map single $ map pick (map (prepend 60) scaledMode2) 
+        map single $ map pick (scaleMode 200 curve8 curve6 mode2)
 
-        map (* 0.6) $ sample 280 curve4
-        sample 280 curve7
-        sample 280 curve1
+        map (* 0.6) $ sample 180 curve4
+        sample 180 curve7
+        sample 180 curve1
         loop 0.1
                  
-resonant1 =
-    zip7
-        map (* (6/2)) $ map (+ 1) (rands 5)
-        loop []
-        map tessitura $ scaledMode3 
-        
-        map (* 0.8) $ sample 70 curve7
-        sample 70 curve6
-        sample 70 curve4
-        loop 1.0
-        
-resonant2 =
-    zip7              
-        map (* (7/3) + 1) $ map (+ 1) (rands 3)
-        loop []
-        map tessitura $ scaledMode4
-
-        map (* 0.8) $ sample 100 curve8
-        sample 100 curve2
-        sample 100 curve3
-        loop 1.0
+; resonant1 =
+;     let pitches = scaleMode 75 curve8 curve6 mode1
+;         zip7
+;             map (* (6/2)) $ map (+ 1) (rands 5)
+;             loop []
+;             ; map tessitura $ pitches
+;             map (take 3 . shuffle) pitches
+;         
+;             map (* 0.8) $ sample 75 curve7
+;             sample 75 curve6
+;             sample 75 curve4
+;             loop 1.0    
+;         
+; resonant2 =
+;     let pitches = scaleMode 75 curve8 curve6 mode1
+;         zip7              
+;             map (* (7/3) + 1) $ map (+ 1) (rands 3)
+;             loop []
+;             map (take 3 . shuffle) pitches
+; 
+;             map (* 0.8) $ sample 100 curve8
+;             sample 100 curve2
+;             sample 100 curve3
+;             loop 1.0  
                                   
-dummy1 = (400, [1], [60], 0.0, 0.0, 0.0, 0.0)
-dummy2 = (700, [1], [60], 0.0, 0.0, 0.0, 0.0)
-layers = [short1, short2, prepend dummy1 resonant1, prepend dummy2 resonant2]
+layers = [short1, short2]
 
 
 
@@ -1086,38 +1090,38 @@ orchestrations =
                                                                                                     
     
     
-    , ( [prc]
-        , durRangeMinDyn (0, 1)
-        , weight3 (weightDyn $ (* 0.5) . gaussian 0.6 30.0) (weightDen $ gaussian 0.1 35.0) (weightSat $ gaussian 0.9 25.0) 
-        , toParts [prc]  . percOrch melody `bassDrum, [] )
-    , ( [prc]
-        , durRangeMinDyn (0, 1)
-        , weight3 (weightDyn $ (* 0.5) . gaussian 0.6 30.0) (weightDen $ gaussian 0.1 35.0) (weightSat $ gaussian 0.9 25.0) 
-        , toParts [prc]  . percOrch melody `snareDrum, [] )
-    , ( [prc]
-        , durRangeMinDyn (1, 2 ^ 12)
-        , weight3 (weightDyn $ (* 0.5) . gaussian 0.6 30.0) (weightDen $ gaussian 0.1 35.0) (weightSat $ gaussian 0.9 25.0) 
-        , toParts [prc]  . percOrch melody `smallCymbal, [] )
-    , ( [prc]
-        , durRangeMinDyn (1, 2 ^ 12)
-        , weight3 (weightDyn $ (* 0.5) . gaussian 0.6 30.0) (weightDen $ gaussian 0.1 35.0) (weightSat $ gaussian 0.9 25.0) 
-        , toParts [prc]  . percOrch melody `largeCymbal, [] )
-    , ( [prc]
-        , durRangeMinDyn (2, 2 ^ 12)
-        , weight3 (weightDyn $ (* 0.5) . gaussian 0.8 30.0) (weightDen $ gaussian 0.5 35.0) (weightSat $ gaussian 0.9 25.0) 
-        , toParts [prc]  . (map (addMark "trem") . percOrch melody `bassDrum), [] )
-    , ( [prc]
-        , durRangeMinDyn (2, 2 ^ 12)
-        , weight3 (weightDyn $ (* 0.5) . gaussian 0.8 30.0) (weightDen $ gaussian 0.5 35.0) (weightSat $ gaussian 0.9 25.0) 
-        , toParts [prc] . (map (addMark "trem") . percOrch melody `snareDrum), [] )
-    , ( [prc]
-        , durRangeMinDyn (2, 2 ^ 12)
-        , weight3 (weightDyn $ (* 0.5) . gaussian 0.8 30.0) (weightDen $ gaussian 0.5 35.0) (weightSat $ gaussian 0.9 25.0) 
-        , toParts [prc]  . (map (addMark "trem") . percOrch melody `smallCymbal), [] )
-    , ( [prc]
-        , durRangeMinDyn (2, 2 ^ 12)
-        , weight3 (weightDyn $ (* 0.5) . gaussian 0.8 30.0) (weightDen $ gaussian 0.5 35.0) (weightSat $ gaussian 0.9 25.0) 
-        , toParts [prc]  . (map (addMark "trem") . percOrch melody `largeCymbal), [] )
+    ; , ( [prc]
+    ;     , durRangeMinDyn (0, 1)
+    ;     , weight3 (weightDyn $ (* 0.5) . gaussian 0.6 30.0) (weightDen $ gaussian 0.1 35.0) (weightSat $ gaussian 0.9 25.0) 
+    ;     , toParts [prc]  . percOrch melody `bassDrum, [] )
+    ; , ( [prc]
+    ;     , durRangeMinDyn (0, 1)
+    ;     , weight3 (weightDyn $ (* 0.5) . gaussian 0.6 30.0) (weightDen $ gaussian 0.1 35.0) (weightSat $ gaussian 0.9 25.0) 
+    ;     , toParts [prc]  . percOrch melody `snareDrum, [] )
+    ; , ( [prc]
+    ;     , durRangeMinDyn (1, 2 ^ 12)
+    ;     , weight3 (weightDyn $ (* 0.5) . gaussian 0.6 30.0) (weightDen $ gaussian 0.1 35.0) (weightSat $ gaussian 0.9 25.0) 
+    ;     , toParts [prc]  . percOrch melody `smallCymbal, [] )
+    ; , ( [prc]
+    ;     , durRangeMinDyn (1, 2 ^ 12)
+    ;     , weight3 (weightDyn $ (* 0.5) . gaussian 0.6 30.0) (weightDen $ gaussian 0.1 35.0) (weightSat $ gaussian 0.9 25.0) 
+    ;     , toParts [prc]  . percOrch melody `largeCymbal, [] )
+    ; , ( [prc]
+    ;     , durRangeMinDyn (2, 2 ^ 12)
+    ;     , weight3 (weightDyn $ (* 0.5) . gaussian 0.8 30.0) (weightDen $ gaussian 0.5 35.0) (weightSat $ gaussian 0.9 25.0) 
+    ;     , toParts [prc]  . (map (addMark "trem") . percOrch melody `bassDrum), [] )
+    ; , ( [prc]
+    ;     , durRangeMinDyn (2, 2 ^ 12)
+    ;     , weight3 (weightDyn $ (* 0.5) . gaussian 0.8 30.0) (weightDen $ gaussian 0.5 35.0) (weightSat $ gaussian 0.9 25.0) 
+    ;     , toParts [prc] . (map (addMark "trem") . percOrch melody `snareDrum), [] )
+    ; , ( [prc]
+    ;     , durRangeMinDyn (2, 2 ^ 12)
+    ;     , weight3 (weightDyn $ (* 0.5) . gaussian 0.8 30.0) (weightDen $ gaussian 0.5 35.0) (weightSat $ gaussian 0.9 25.0) 
+    ;     , toParts [prc]  . (map (addMark "trem") . percOrch melody `smallCymbal), [] )
+    ; , ( [prc]
+    ;     , durRangeMinDyn (2, 2 ^ 12)
+    ;     , weight3 (weightDyn $ (* 0.5) . gaussian 0.8 30.0) (weightDen $ gaussian 0.5 35.0) (weightSat $ gaussian 0.9 25.0) 
+    ;     , toParts [prc]  . (map (addMark "trem") . percOrch melody `largeCymbal), [] )  
                                                                                                     
     
     
@@ -1126,11 +1130,11 @@ orchestrations =
         ; , weightSatRes (fn (sat res) mean2 (gaussian 0.4 30.0 sat) (gaussian 1.0 100.0 res))
         , weightSatRes (fn (sat res) (gaussian 1.0 100.0 res))
         , toParts [pno]  . longHarmOrch chord, [] )
-    , ( [pno2]
-        , pitchRangeMinDyn (21, 108)
-        ; , weightSatRes (fn (sat res) mean2 (gaussian 0.4 30.0 sat) (gaussian 1.0 100.0 res))
-        , weightSatRes (fn (sat res) (gaussian 1.0 100.0 res))
-        , toParts [pno2]  . longHarmOrch chord, [] )
+    ; , ( [pno2]
+    ;     , pitchRangeMinDyn (21, 108)
+    ;     ; , weightSatRes (fn (sat res) mean2 (gaussian 0.4 30.0 sat) (gaussian 1.0 100.0 res))
+    ;     , weightSatRes (fn (sat res) (gaussian 1.0 100.0 res))
+    ;     , toParts [pno2]  . longHarmOrch chord, [] )     
 
     , ( [crot, vib]
         , pitchRangeMinDyn (84, 96)
